@@ -1,0 +1,40 @@
+<html>
+  <head>
+    <title>Dot Bot</title>
+    <meta id="viewport" name="viewport" content ="width=device-width, initial-scale=1.0, overflow:hidden, user-scalable=no" />
+    <link href='https://fonts.googleapis.com/css?family=Unica+One|Lato:400,100,700' rel='stylesheet' type='text/css'>
+    <style>
+      .flexbox-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <div class="flexbox-container">
+
+    <div id="contact">
+    <h1>Connect Guru to your Database</h1>
+    <form action="http://127.0.0.1:8080/myaction" method="post">
+        <fieldset>
+            <label for="host">Database Host:</label>
+            <input type="text" id="host" name="host" placeholder="Host" />
+
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"placeholder="Enter your username" />
+
+            <label for="password">Username:</label>
+            <input type="password" id="password" name="password" />
+
+            <label for="database">Database Name::</label>
+            <input type="text" id="database" name="database"placeholder="Enter your database name" />
+
+            <input type="submit" value="Save" />
+
+        </fieldset>
+    </form>
+</div>
+  </div>
+</html>
