@@ -9,6 +9,14 @@ if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
   process.exit(1);
 }
 
+//for dev only (makes db info + connection static)
+if(process.env.host || process.env.username || process.env.password || process.env.database){
+  host = process.env.host;
+  username = process.env.username;
+  password = process.env.password;
+  database = process.env.password
+}
+
 
 var controller = Botkit.slackbot({
   json_file_store: './db_slackbutton_bot/',
@@ -36,14 +44,6 @@ app.post('/myaction', function(req, res) {
   username = req.body.username;
   password = req.body.password;
   database = req.body.database;
-
-  //global variable so we can use it in other functions
-  connection = mysql.createConnection({
-  	host     : host,
-  	user     : username,
-  	password : password,
-  	database : database
-  });
 });
 
 app.listen(8080, function() {
@@ -128,6 +128,14 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
 	bot.startConversation(message, askTable);
 });
 
+//global variable so we can use it in other functions
+connection = mysql.createConnection({
+  host     : host,
+  user     : username,
+  password : password,
+  database : database
+});
+
 choices = [];
 
 askTable = function(response, convo){
@@ -179,6 +187,7 @@ askFilterType = function(response, convo){
 			choices.push(response.text);
       console.log(choices);
 			askFilterDetails(response, convo);
+      console.log('woorrkking');
 			convo.next();
 		});
 		}
@@ -187,7 +196,7 @@ askFilterType = function(response, convo){
 
 
 askFilterDetails = function(response, convo){
-
+  console.log("this thing is on!")
   console.log(selectedTable);
 
 	var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + choices[0] + "' AND COLUMN_NAME = '" + choices[1] + "'");
@@ -214,40 +223,117 @@ askFilterDetails = function(response, convo){
 }
 
 askViewBy = function(response, convo){
-	convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`", function(response, convo){
-		choices.push(response.text);
-		makeSQL();
-		convo.next();
-	});
+  convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`",[
+    {
+      pattern: 'raw data',
+      callback: function(response,convo) {
+          convo.say('you said ' + response.text);
+          viewType = response.text;
+          choices.push(viewType);
+
+          //PERFORM QUERY, RETURN RAW DATA IN EXCEL FILE
+
+          convo.next();
+        }
+      },
+      {
+        pattern: 'average',
+        callback: function(response,convo) {
+          convo.say('you said ' + response.text);
+
+          convo.next();
+        }
+      },
+      {
+        pattern: 'count',
+        callback: function(response,convo) {
+          // convo.say('you said ' + response.text);
+          viewType = response.text;
+          choices.push(viewType);
+          count = 0;
+          if(choices[2] == "None"){
+          	var query = "SELECT " + choices[1]  + " FROM " + choices[0];
+          }
+          else{
+            console.log('UNFINISHED');
+          	var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
+          }
+          connection.query({
+          	sql : query,
+          	timeout : 10000
+          },function(error, results, fields){
+            for(var i = 0; i < results.length; i++){
+        			var keys = Object.keys(results[i]);
+              count = count + 1;
+        			for(var j = 0; j < keys.length; j++){
+          			//CONVO undefined???
+
+                //log all the results
+          			//console.log(results[i][keys[j]]);
+          		}
+            }
+            console.log("the count is " + count);
+            var countToString = count.toString();
+            console.log("string count is: " + countToString);
+            convo.say("the count is " + countToString);
+          });
+
+          convo.next();
+        }
+      },
+      {
+        pattern: 'sum',
+        callback: function(response,convo) {
+          convo.say('you said ' + response.text);
+          convo.next();
+        }
+      }
+    ]);
+  }
+
+
+
+function returnData(bot, message, choices, resultType){
+  //perform sql
+
+  //based on resultType (raw data, count, etc.) in if/else statements, return the result via bot.reply (separate from convo)
 }
 
-makeSQL = function(response, convo){
-	console.log("query", choices);
-
-	if(choices[2] == "None"){
-    console.log('woot1');
-		var query = "SELECT " + choices[1]  + " FROM " + choices[0];
-	}
-	else{
-    console.log('woot2');
-		var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
-	}
-
-	connection.query({
-		sql : query,
-		timeout : 4000000
-	},
-  function(error, results, fields){
-    for(var i = 0; i < results.length; i++){
-			var keys = Object.keys(results[i]);
-			for(var j = 0; j < keys.length; j++){
-  			//CONVO undefined???
-        console.log(results);
-  			console.log(results[i][keys[j]]);
-  		}
-    }
-  });
-}
+//NOTHING IS CALLING THIS ANYMORE
+// makeSQL = function(response, convo){
+// 	console.log("query", choices);
+//
+//   var viewType = response.text;
+//   console.log("The view type is: " + viewType);
+//
+//   var count = 0;
+//
+// 	if(choices[2] == "None"){
+// 		var query = "SELECT " + choices[1]  + " FROM " + choices[0];
+// 	}
+// 	else{
+//     console.log('UNFINISHED');
+// 		var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
+// 	}
+//
+// 	connection.query({
+// 		sql : query,
+// 		timeout : 4000000
+// 	},
+//   function(error, results, fields){
+//     console.log(results);
+//     console.log("********");
+//     for(var i = 0; i < results.length; i++){
+// 			var keys = Object.keys(results[i]);
+//       count = count + 1;
+// 			for(var j = 0; j < keys.length; j++){
+//   			//CONVO undefined???
+//   			console.log(results[i][keys[j]]);
+//   		}
+//     }
+//     console.log("the count is " + count);
+//   });
+// }
 
 // controller.on(['direct_message','mention','direct_mention'],function(bot,message) {
 //   bot.api.reactions.add({
