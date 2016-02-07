@@ -2,6 +2,9 @@
 var Botkit = require('Botkit');
 var mysql = require('mysql');
 
+
+
+
 require('./env.js');
 
 if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
@@ -14,8 +17,18 @@ if(process.env.host || process.env.username || process.env.password || process.e
   host = process.env.host;
   username = process.env.username;
   password = process.env.password;
-  database = process.env.password
+  database = process.env.database;
 }
+
+var knex = require('knex')({
+  client: 'mysql',
+  connection: {
+    host     : process.env.host,
+    user     : process.env.username,
+    password : process.env.password,
+    database : process.env.database
+  }
+});
 
 
 var controller = Botkit.slackbot({
@@ -223,68 +236,136 @@ askFilterDetails = function(response, convo){
 }
 
 askViewBy = function(response, convo){
-  convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`",[
+  convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`, `Max`, `Min`",[
     {
-      pattern: 'raw data',
+      pattern: 'Raw Data',
       callback: function(response,convo) {
-          convo.say('you said ' + response.text);
           viewType = response.text;
           choices.push(viewType);
-
-          //PERFORM QUERY, RETURN RAW DATA IN EXCEL FILE
-
-          convo.next();
-        }
-      },
-      {
-        pattern: 'average',
-        callback: function(response,convo) {
-          convo.say('you said ' + response.text);
-
-          convo.next();
-        }
-      },
-      {
-        pattern: 'count',
-        callback: function(response,convo) {
-          // convo.say('you said ' + response.text);
-          viewType = response.text;
-          choices.push(viewType);
-          count = 0;
           if(choices[2] == "None"){
-          	var query = "SELECT " + choices[1]  + " FROM " + choices[0];
+            var query = knex.select(choices[1]).table(choices[0]);
+            console.log(query.toString());
           }
-          else{
-            console.log('UNFINISHED');
-          	var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
-          }
-          connection.query({
-          	sql : query,
-          	timeout : 10000
-          },function(error, results, fields){
-            for(var i = 0; i < results.length; i++){
-        			var keys = Object.keys(results[i]);
-              count = count + 1;
-        			for(var j = 0; j < keys.length; j++){
-          			//CONVO undefined???
 
-                //log all the results
-          			//console.log(results[i][keys[j]]);
-          		}
-            }
-            console.log("the count is " + count);
-            var countToString = count.toString();
-            console.log("string count is: " + countToString);
-            convo.say("the count is " + countToString);
+
+      
+          convo.next();
+        }
+      },
+      {
+        pattern: 'Average',
+        callback: function(response,convo) {
+          if(choices[2] == "None"){
+            var query = knex(choices[0]).avg(choices[1]);
+            console.log(query.toString());
+          }
+
+        connection.query({
+            sql : query.toString(),
+            timeout : 10000
+          },function(error, results, fields){
+            for (var key in results[0]) {
+            console.log("Key: " + key);
+            console.log("Value: " + results[0][key]);
+            convo.say("Average: " + results[0][key]);
+        }
+                console.log(results);
           });
 
           convo.next();
         }
       },
       {
-        pattern: 'sum',
+        pattern: 'Count',
         callback: function(response,convo) {
-          convo.say('you said ' + response.text);
+          viewType = response.text;
+          choices.push(viewType);
+          if(choices[2] == "None"){
+            var query = knex(choices[0]).count(choices[1]);
+            console.log(query.toString());
+          }
+
+          connection.query({
+          	sql : query.toString(),
+          	timeout : 10000
+          },function(error, results, fields){
+            for (var key in results[0]) {
+            console.log("Key: " + key);
+            console.log("Value: " + results[0][key]);
+            convo.say("Count: " + results[0][key]);
+        }
+          });
+
+          convo.next();
+        }
+      },
+      {
+        pattern: 'Sum',
+        callback: function(response,convo) {
+          if(choices[2] == "None"){
+            var query = knex(choices[0]).sum(choices[1]);
+            console.log(query.toString());
+          }
+
+          connection.query({
+            sql : query.toString(),
+            timeout : 10000
+          },function(error, results, fields){
+            for (var key in results[0]) {
+            console.log("Key: " + key);
+            console.log("Value: " + results[0][key]);
+            convo.say("Sum: " + results[0][key]);
+        }
+          });
+
+          convo.next();
+        }
+      },
+       {
+      pattern: 'Max',
+      callback: function(response,convo) {
+          if(choices[2] == "None"){
+            var query = knex(choices[0]).max(choices[1]);
+            console.log(query.toString());
+          }
+
+               connection.query({
+            sql : query.toString(),
+            timeout : 10000
+          },function(error, results, fields){
+            for (var key in results[0]) {
+            console.log("Key: " + key);
+            console.log("Value: " + results[0][key]);
+            convo.say("Maximum: " + results[0][key]);
+        }
+          });
+
+
+      
+          convo.next();
+        }
+      },
+       {
+      pattern: 'Min',
+      callback: function(response,convo) {
+          if(choices[2] == "None"){
+            var query = knex(choices[0]).min(choices[1]);
+            console.log(query.toString());
+          }
+
+               connection.query({
+            sql : query.toString(),
+            timeout : 10000
+          },function(error, results, fields){
+            for (var key in results[0]) {
+            console.log("Key: " + key);
+            console.log("Value: " + results[0][key]);
+            convo.say("Minimum: " + results[0][key]);
+        }
+          });
+
+
+      
           convo.next();
         }
       }
