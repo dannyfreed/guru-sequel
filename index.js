@@ -20,14 +20,16 @@ if(process.env.host || process.env.username || process.env.password || process.e
   database = process.env.database;
 }
 
+connection = mysql.createConnection({
+  host     : host,
+  user     : username,
+  password : password,
+  database : database
+});
+
 var knex = require('knex')({
   client: 'mysql',
-  connection: {
-    host     : process.env.host,
-    user     : process.env.username,
-    password : process.env.password,
-    database : process.env.database
-  }
+  connection: connection
 });
 
 
@@ -142,12 +144,7 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
 });
 
 //global variable so we can use it in other functions
-connection = mysql.createConnection({
-  host     : host,
-  user     : username,
-  password : password,
-  database : database
-});
+
 
 choices = [];
 
