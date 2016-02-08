@@ -32,6 +32,17 @@ var knex = require('knex')({
   connection: connection
 });
 
+var knex = require('knex')({
+  client: 'mysql',
+  connection: {
+    host     : process.env.host,
+    user     : process.env.username,
+    password : process.env.password,
+    database : process.env.database
+  }
+});
+
+
 var controller = Botkit.slackbot({
   json_file_store: './db_slackbutton_bot/',
 }).configureSlackApp(
@@ -143,6 +154,7 @@ filter = new Object();
 view = new Object();
 tableFields = [];
 
+<<<<<<< HEAD
 function cleanInputs(){
   if(tableFields.length != 0){
       tableFields.length = 0;
@@ -168,6 +180,14 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
   bot.startConversation(message, askTable);
 });
 
+=======
+choices = [];
+queryOptions = new Object();
+filter = new Object();
+view = new Object();
+tableFields = [];
+
+>>>>>>> master
 askTable = function(response, convo){
   //get the different tables
   connection.query({
@@ -180,12 +200,23 @@ askTable = function(response, convo){
       tables.push("`" + results[i]['Tables_in_' + database] + "` ");
     }
     //ask user which table they are interested in (Orders, People, etc.)
+<<<<<<< HEAD
     convo.ask(tables.toString(), function(response,convo){
       queryOptions.table = response.text;
       askFilterType(response, convo);
       convo.next();
     });
   });
+=======
+		convo.ask(tables.toString(), function(response,convo){
+			choices.push(response.text);
+      console.log(choices)
+      queryOptions.table = response.text;
+			askFilterType(response, convo);
+			convo.next();
+		});
+	});
+>>>>>>> master
 }
 
 askFilterType = function(response, convo){
@@ -205,6 +236,7 @@ askFilterType = function(response, convo){
         //format selections nicely
         var field = "`" + rows[i]["Field"] + "` ";
         //add to columns array
+<<<<<<< HEAD
         columns.push(field);
         tableFields.push(field);
       }
@@ -218,9 +250,27 @@ askFilterType = function(response, convo){
     });
     }
   });
+=======
+				columns.push(field);
+        tableFields.push(field);
+			}
+
+    //list column titles, ask user to select one
+		convo.ask(columns.toString(), function(response, convo){
+			choices.push(response.text);
+      console.log(choices);
+      //add field to filter object
+      filter.field = response.text;
+			askFilterDetails(response, convo);
+			convo.next();
+		});
+		}
+	});
+>>>>>>> master
 }
 
 askFilterDetails = function(response, convo){
+<<<<<<< HEAD
   var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'");
   query.on('error', function(err) {
     throw err;
@@ -236,15 +286,42 @@ askFilterDetails = function(response, convo){
     };
 
     convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
+=======
+
+	var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + choices[0] + "' AND COLUMN_NAME = '" + choices[1] + "'");
+	query.on('error', function(err) {
+		throw err;
+	});
+	query.on('result', function(row) {
+		var options = {
+			"varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
+			"float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+			"tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+			"int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+			"timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+			"time" : "`TO DO.....:tophat:`"
+		};
+
+		convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
+>>>>>>> master
 
       //add filter details to filter object
       filter.filter = response.text;
       //add filter to queryOptions object
       queryOptions.filter = filter;
+<<<<<<< HEAD
       askViewBy(response, convo);
       convo.next();
     });
   });
+=======
+      console.log(filter);
+      console.log(queryOptions);
+			askViewBy(response, convo);
+			convo.next();
+		});
+	});
+>>>>>>> master
 }
 
 //filterType = column title
@@ -267,6 +344,7 @@ askViewBy = function(response, convo){
           convo.say('What field do you want to get the average of?');
           var viewType = response.text;
           view.type = viewType;
+<<<<<<< HEAD
           convo.ask(tableFields.toString(), function(response, convo){
             view.field = response.text;
             queryOptions.view = view;
@@ -278,12 +356,41 @@ askViewBy = function(response, convo){
             });
             convo.next();
           });
+=======
+          console.log('THE TABLE FIELDS ARE THIS: ' + tableFields.toString());
+          //ask average of ______ (pick a field)
+          convo.ask(tableFields.toString(), function(response, convo){
+            view.field = response.text;
+            queryOptions.view = view;
+            console.log('THE VIEW FIELD IS OF ' + response.text);
+
+            var query = knex("orders").avg("total");
+            query = buildQuery();
+
+            console.log(query);
+            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+              console.log(results);
+              var key = 'avg(`' + view.field + '`)';
+              var average = results[0][key];
+              console.log(average);
+              convo.say("the average is " + average);
+            });
+
+            convo.next();
+          });
+              // var query = buildQuery();
+
+
+          //
+
+>>>>>>> master
           convo.next();
         }
       },
       {
         pattern: 'count',
         callback: function(response, convo) {
+<<<<<<< HEAD
           convo.say('What field do you want to get the count of?');
           var viewType = response.text;
           view.type = viewType;
@@ -299,6 +406,39 @@ askViewBy = function(response, convo){
               convo.say("Count: " + count);
             });
             convo.next();
+=======
+          // convo.say('you said ' + response.text);
+          var viewType = response.text;
+
+          //for count this can be passed just as a string
+          queryOptions.view = viewType;
+
+          var query = buildQuery();
+
+          // else{
+          //   console.log('UNFINISHED');
+          //   var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
+          // }\
+          connection.query({
+            sql : query,
+            timeout : 10000
+          },function(error, results, fields){
+            // for(var i = 0; i < results.length; i++){
+            //   var keys = Object.keys(results[i]);
+            //   count = count + 1;
+            //   for(var j = 0; j < keys.length; j++){
+            //     //CONVO undefined???
+            //
+            //     //log all the results
+            //     //console.log(results[i][keys[j]]);
+            //   }
+            // }
+
+            //need count(*) to be a variable? is it ever going to be different
+            var count = results[0]['count(*)'];
+            var countToString = count.toString();
+            convo.say("the count is " + countToString);
+>>>>>>> master
           });
           convo.next();
         }
@@ -393,6 +533,7 @@ controller.storage.teams.all(function(err,teams) {
 
 function buildQuery(){
 
+<<<<<<< HEAD
   console.log("Building Query: ", queryOptions);
 
   var table = queryOptions.table;
@@ -416,6 +557,26 @@ function buildQuery(){
 
   console.log('the buildquery query is: ' + query.toString());
   return query.toString();
+=======
+  console.log(queryOptions);
+  console.log('VIEW OBJ IS' + view.type + view.field);
+
+
+  var table = queryOptions.table;
+  var viewType = "average";
+
+  if (viewType == "count"){
+    var query = knex(table).count();
+  }
+  else if (viewType == "average"){
+    //console.log(tableFields.toString());
+    var query = knex(table).avg(view.field);
+  }
+  query = query.toString();
+  console.log('the buildquery query is: ' + query);
+
+  return query;
+>>>>>>> master
 
   // if (filter == "today"){
   //   var query = "SELECT * FROM " + choices[0] + " WHERE " + columnTitle + " >= CURDATE()";
@@ -426,4 +587,8 @@ function buildQuery(){
   // //var query = "SELECT * FROM " + choices[0];
   // console.log("The query is" + query);
   // return query;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> master
