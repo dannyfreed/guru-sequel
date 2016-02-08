@@ -284,21 +284,17 @@ askViewBy = function(response, convo){
       {
         pattern: 'count',
         callback: function(response, convo) {
-          convo.say('What field do you want to get the count of?');
           var viewType = response.text;
           view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              console.log(results);
-              var key = 'count(`' + view.field + '`)';
-              var count = results[0][key];
-              console.log(count);
-              convo.say("Count: " + count);
-            });
-            convo.next();
+          view.field = null;
+          queryOptions.view = view;
+          var query = buildQuery();
+          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+            console.log(results);
+            var key = 'count(*)';
+            var count = results[0][key];
+            console.log(count);
+            convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
           });
           convo.next();
         }
@@ -398,8 +394,24 @@ function buildQuery(){
   var table = queryOptions.table;
   var viewType = queryOptions.view.type;
 
+
+  //set filter if there is one
+  if(queryOptions.filter != null){
+    var filter = queryOptions.filter.filter;
+    var field = queryOptions.filter.field;
+  }
+
+  //set where statement based off of filter + field
+  if (filter == "Today"){
+    var whereStatement = field + " >= CURDATE()";
+  }
+  else if (filter == "Yesterday"){
+    //build these scenarios out
+  }
+
+
   if (viewType == "count"){
-    var query = knex(table).count(view.field);
+    var query = knex(table).whereRaw(whereStatement).count();
   }
   else if (viewType == "average"){
     var query = knex(table).avg(view.field);
