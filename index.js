@@ -1,6 +1,8 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
 var Botkit = require('Botkit');
 var mysql = require('mysql');
+var Promise = require('promise');
+
 
 require('./env.js');
 
@@ -151,7 +153,7 @@ choices = [];
 queryOptions = new Object();
 filter = new Object();
 view = new Object();
-fields = new Object();
+tableFields = [];
 
 askTable = function(response, convo){
   //get the different tables
@@ -195,6 +197,7 @@ askFilterType = function(response, convo){
 				var field = "`" + rows[i]["Field"] + "` ";
         //add to columns array
 				columns.push(field);
+        tableFields.push(field);
 			}
 
     //list column titles, ask user to select one
@@ -262,18 +265,23 @@ askViewBy = function(response, convo){
           convo.say('What field do you want to get the average of?');
           var viewType = response.text;
           view.type = viewType;
+          console.log('THE TABLE FIELDS ARE THIS: ' + tableFields.toString());
           //ask average of ______ (pick a field)
-          convo.ask(arrayOfFields.toString(), function(response, convo){
+          convo.ask(tableFields.toString(), function(response, convo){
             view.field = response.text;
             queryOptions.view = view;
             console.log('THE VIEW FIELD IS OF ' + response.text);
-            console.log(queryOptions);
 
             var query = knex("orders").avg("total");
+            query = buildQuery();
+
+            console.log(query);
             connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
               console.log(results);
-              var averageToString = "100!";
-              convo.say("the average is" + averageToString);
+              var key = 'avg(`' + view.field + '`)';
+              var average = results[0][key];
+              console.log(average);
+              convo.say("the average is " + average);
             });
 
             convo.next();
@@ -371,7 +379,8 @@ function buildQuery(){
     var query = knex(table).count();
   }
   else if (viewType == "average"){
-    var query = knex(table).count();
+    //console.log(tableFields.toString());
+    var query = knex(table).avg(view.field);
   }
   query = query.toString();
   console.log('the buildquery query is: ' + query);
