@@ -10,8 +10,10 @@
   "author": "Danny Freed",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.14.2",
     "botkit": "0.0.5",
     "express": "^4.13.4",
+    "knex": "^0.9.0",
     "mysql": "^2.10.2"
   }
 }

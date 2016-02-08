@@ -18,6 +18,17 @@ if(process.env.host || process.env.username || process.env.password || process.e
 }
 
 
+var knex = require('knex')({
+  client: 'mysql',
+  connection: {
+    host     : process.env.host,
+    user     : process.env.username,
+    password : process.env.password,
+    database : process.env.database
+  }
+});
+
+
 var controller = Botkit.slackbot({
   json_file_store: './db_slackbutton_bot/',
 }).configureSlackApp(
@@ -137,9 +148,12 @@ connection = mysql.createConnection({
 });
 
 choices = [];
+queryOptions = new Object();
+filter = new Object();
+view = new Object();
+fields = new Object();
 
 askTable = function(response, convo){
-
   //get the different tables
 	connection.query({
 		sql : "show tables",
@@ -156,6 +170,7 @@ askTable = function(response, convo){
 		convo.ask(tables.toString(), function(response,convo){
 			choices.push(response.text);
       console.log(choices)
+      queryOptions.table = response.text;
 			askFilterType(response, convo);
 			convo.next();
 		});
@@ -186,8 +201,9 @@ askFilterType = function(response, convo){
 		convo.ask(columns.toString(), function(response, convo){
 			choices.push(response.text);
       console.log(choices);
+      //add field to filter object
+      filter.field = response.text;
 			askFilterDetails(response, convo);
-      console.log('woorrkking');
 			convo.next();
 		});
 		}
@@ -196,8 +212,6 @@ askFilterType = function(response, convo){
 
 
 askFilterDetails = function(response, convo){
-  console.log("this thing is on!")
-  console.log(selectedTable);
 
 	var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + choices[0] + "' AND COLUMN_NAME = '" + choices[1] + "'");
 	query.on('error', function(err) {
@@ -209,19 +223,25 @@ askFilterDetails = function(response, convo){
 			"float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
 			"tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
 			"int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-			"date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+			"timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
 			"time" : "`TO DO.....:tophat:`"
 		};
 
 		convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
-			choices.push(response.text);
-      console.log(choices);
+
+      //add filter details to filter object
+      filter.filter = response.text;
+      //add filter to queryOptions object
+      queryOptions.filter = filter;
+      console.log(filter);
+      console.log(queryOptions);
 			askViewBy(response, convo);
 			convo.next();
 		});
 	});
 }
 
+//filterType = column title
 askViewBy = function(response, convo){
   convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`",[
     {
@@ -239,42 +259,66 @@ askViewBy = function(response, convo){
       {
         pattern: 'average',
         callback: function(response,convo) {
-          convo.say('you said ' + response.text);
+          convo.say('What field do you want to get the average of?');
+          var viewType = response.text;
+          view.type = viewType;
+          //ask average of ______ (pick a field)
+          convo.ask(arrayOfFields.toString(), function(response, convo){
+            view.field = response.text;
+            queryOptions.view = view;
+            console.log('THE VIEW FIELD IS OF ' + response.text);
+            console.log(queryOptions);
+
+            var query = knex("orders").avg("total");
+            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+              console.log(results);
+              var averageToString = "100!";
+              convo.say("the average is" + averageToString);
+            });
+
+            convo.next();
+          });
+              // var query = buildQuery();
+
+
+          //
 
           convo.next();
         }
       },
       {
         pattern: 'count',
-        callback: function(response,convo) {
+        callback: function(response, convo) {
           // convo.say('you said ' + response.text);
-          viewType = response.text;
-          choices.push(viewType);
-          count = 0;
-          if(choices[2] == "None"){
-          	var query = "SELECT " + choices[1]  + " FROM " + choices[0];
-          }
-          else{
-            console.log('UNFINISHED');
-          	var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
-          }
-          connection.query({
-          	sql : query,
-          	timeout : 10000
-          },function(error, results, fields){
-            for(var i = 0; i < results.length; i++){
-        			var keys = Object.keys(results[i]);
-              count = count + 1;
-        			for(var j = 0; j < keys.length; j++){
-          			//CONVO undefined???
+          var viewType = response.text;
 
-                //log all the results
-          			//console.log(results[i][keys[j]]);
-          		}
-            }
-            console.log("the count is " + count);
+          //for count this can be passed just as a string
+          queryOptions.view = viewType;
+
+          var query = buildQuery();
+
+          // else{
+          //   console.log('UNFINISHED');
+          //   var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
+          // }\
+          connection.query({
+            sql : query,
+            timeout : 10000
+          },function(error, results, fields){
+            // for(var i = 0; i < results.length; i++){
+            //   var keys = Object.keys(results[i]);
+            //   count = count + 1;
+            //   for(var j = 0; j < keys.length; j++){
+            //     //CONVO undefined???
+            //
+            //     //log all the results
+            //     //console.log(results[i][keys[j]]);
+            //   }
+            // }
+
+            //need count(*) to be a variable? is it ever going to be different
+            var count = results[0]['count(*)'];
             var countToString = count.toString();
-            console.log("string count is: " + countToString);
             convo.say("the count is " + countToString);
           });
 
@@ -292,59 +336,6 @@ askViewBy = function(response, convo){
   }
 
 
-
-function returnData(bot, message, choices, resultType){
-  //perform sql
-
-  //based on resultType (raw data, count, etc.) in if/else statements, return the result via bot.reply (separate from convo)
-}
-
-//NOTHING IS CALLING THIS ANYMORE
-// makeSQL = function(response, convo){
-// 	console.log("query", choices);
-//
-//   var viewType = response.text;
-//   console.log("The view type is: " + viewType);
-//
-//   var count = 0;
-//
-// 	if(choices[2] == "None"){
-// 		var query = "SELECT " + choices[1]  + " FROM " + choices[0];
-// 	}
-// 	else{
-//     console.log('UNFINISHED');
-// 		var query = "SELECT " + choices[1]  + " FROM " + choices[0] + "WHERE" + choices[1] + " " + choices[2] + " STRINGGGGG";
-// 	}
-//
-// 	connection.query({
-// 		sql : query,
-// 		timeout : 4000000
-// 	},
-//   function(error, results, fields){
-//     console.log(results);
-//     console.log("********");
-//     for(var i = 0; i < results.length; i++){
-// 			var keys = Object.keys(results[i]);
-//       count = count + 1;
-// 			for(var j = 0; j < keys.length; j++){
-//   			//CONVO undefined???
-//   			console.log(results[i][keys[j]]);
-//   		}
-//     }
-//     console.log("the count is " + count);
-//   });
-// }
-
-// controller.on(['direct_message','mention','direct_mention'],function(bot,message) {
-//   bot.api.reactions.add({
-//     timestamp: message.ts,
-//     channel: message.channel,
-//     name: 'robot_face',
-//   },function(err) {
-//     if (err) { console.log(err) }
-//     bot.reply(message,'I heard you loud and clear boss.');
-//   });
-// });
 
 controller.storage.teams.all(function(err,teams) {
 
@@ -366,3 +357,34 @@ controller.storage.teams.all(function(err,teams) {
   }
 
 });
+
+function buildQuery(){
+
+  console.log(queryOptions);
+  console.log('VIEW OBJ IS' + view.type + view.field);
+
+
+  var table = queryOptions.table;
+  var viewType = "average";
+
+  if (viewType == "count"){
+    var query = knex(table).count();
+  }
+  else if (viewType == "average"){
+    var query = knex(table).count();
+  }
+  query = query.toString();
+  console.log('the buildquery query is: ' + query);
+
+  return query;
+
+  // if (filter == "today"){
+  //   var query = "SELECT * FROM " + choices[0] + " WHERE " + columnTitle + " >= CURDATE()";
+  //   console.log('todayyyyy');
+  // }
+  //
+  //
+  // //var query = "SELECT * FROM " + choices[0];
+  // console.log("The query is" + query);
+  // return query;
+}
