@@ -2,8 +2,7 @@
 var Botkit = require('Botkit');
 var mysql = require('mysql');
 var Promise = require('promise');
-var request = require('request');
-var fs = require('fs');
+
 
 require('./env.js');
 
@@ -254,49 +253,11 @@ askViewBy = function(response, convo){
     {
       pattern: 'raw data',
       callback: function(response,convo) {
-          convo.ask("What would you like to name the file?", function(response, convo){
-            
-            /*
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'avg(`' + view.field + '`)';
-              var average = results[0][key];
-              convo.say("Average: " + average);
-            });
+          convo.say('you said ' + response.text);
+          viewType = response.text;
 
+          //PERFORM QUERY, RETURN RAW DATA IN EXCEL FILE
 
-*/  
-          
-          if(response.text.indexOf(".csv") == -1){ // MAKE SURE IN CSV FORMAT
-            var filenamed = response.text + ".csv";
-          }
-          else{
-              var filenamed = response.text;
-            }
-
-          var formData = {
-            token: "xoxp-17426907188-18992194192-20587574146-5566f8cfa5", // make dynamic from db_slackbutton_bot, users, then token
-            filename: filenamed,
-            file: fs.createReadStream('testingagain.csv'))  //I think we have to do something with streams here?
-          };
-
-          request({
-            method: 'POST',
-            url: 'https://slack.com/api/files.upload',
-            form: formData
-          }, function(err, res, body) {
-            if(err){
-              console.log(err);
-            }
-            else{
-                console.log(JSON.stringify(body, null, 2));
-            }
-          });
-
-          //TODO : Then retrieve file and convo.say with attachment.  
-
-            convo.next();
-          });
           convo.next();
         }
       },
