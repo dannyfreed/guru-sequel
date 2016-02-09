@@ -192,7 +192,7 @@ askFilterType = function(response, convo){
   //ask user if they would like to apply any filters
   selectedTable = response.text;
 
-  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to apply any filters to narrow your search?");
+  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to apply any filters to narrow your search? (Select a Field to filter by or say `NO`)");
 
   //get column titles of specified table, put into columns[]
   connection.query('SHOW COLUMNS FROM ' + selectedTable +';', function(err, rows, fields) {
@@ -212,9 +212,20 @@ askFilterType = function(response, convo){
     //list column titles, ask user to select one
     convo.ask(columns.toString(), function(response, convo){
       //add field to filter object
-      filter.field = response.text;
-      askFilterDetails(response, convo);
-      convo.next();
+      var response = response.text.toLowerCase();
+
+      //if user responds no to "Do you want to add a filter"//
+      if (response == "no" || response =="nah" || response =="nope" || response == "n"){
+        queryOptions.filter = null;
+        askViewBy(response,convo);
+        convo.next()
+      }
+
+      else{
+        filter.field = response.text;
+        askFilterDetails(response, convo);
+        convo.next();
+      }
     });
     }
   });
@@ -226,19 +237,24 @@ askFilterDetails = function(response, convo){
     throw err;
   });
   query.on('result', function(row) {
+    var filterDataType = row['DATA_TYPE'];
     var options = {
-      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
-      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "time" : "`TO DO.....:tophat:`"
+      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`",
+      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
+      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
+      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
+      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
+      "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
+      "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
+
     };
 
     convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
 
       //add filter details to filter object
       filter.filter = response.text;
+      filter.dataType = filterDataType;
+      console.log(filter);
       //add filter to queryOptions object
       queryOptions.filter = filter;
       askViewBy(response, convo);
@@ -294,7 +310,13 @@ askViewBy = function(response, convo){
             var key = 'count(*)';
             var count = results[0][key];
             console.log(count);
-            convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
+            //if there is a filter, include it in the response
+            if (queryOptions.filter != null){
+              convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
+            }
+            else{
+              convo.say("There are *" + count + " " + queryOptions.table + "* ");
+            }
           });
           convo.next();
         }
@@ -399,15 +421,55 @@ function buildQuery(){
   if(queryOptions.filter != null){
     var filter = queryOptions.filter.filter;
     var field = queryOptions.filter.field;
+    var filterDataType = queryOptions.filter.dataType;
   }
 
   //set where statement based off of filter + field
   if (filter == "Today"){
-    var whereStatement = field + " >= CURDATE()";
+    if (filterDataType == "timestamp"){
+      var whereStatement = field + " >= CURDATE()";
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
   }
   else if (filter == "Yesterday"){
-    //build these scenarios out
+    if (filterDataType == "timestamp"){
+      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND " + field + " < CURDATE()"
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
   }
+  else if (filter == "Past 7 days"){
+    if (filterDataType == "timestamp"){
+      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND " + field + " < CURDATE()"
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
+  }
+  else if (filter == "Past 30 days"){
+    if (filterDataType == "timestamp"){
+      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND " + field + " < CURDATE()"
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
+  }
+
 
 
   if (viewType == "count"){
