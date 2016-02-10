@@ -86,6 +86,7 @@ controller.setupWebserver(process.env.port,function(err,webserver) {
 });
 
 
+
 // just a simple way to make sure we don't
 // connect to the RTM twice for the same team
 var _bots = {};
@@ -166,6 +167,11 @@ function cleanInputs(){
 controller.hears(['question'],['direct_message','direct_mention','mention'],function(bot,message) {
   bot.reply(message, "What do you have a question about?");
   cleanInputs();
+  var test= "testinggg";
+  localStorage.setItem("temp", test);
+  var tt = localStorage.getItem("temp");
+  convols.log(tt);
+
   bot.startConversation(message, askTable);
 });
 
@@ -254,8 +260,7 @@ askViewBy = function(response, convo){
     {
       pattern: 'raw data',
       callback: function(response,convo) {
-          convo.ask("What would you like to name the file?", function(response, convo){
-            
+            var filename = queryOptions.table + "_" + queryOptions.filter + "_";        
             /*
             query = buildQuery();
             connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
@@ -267,17 +272,12 @@ askViewBy = function(response, convo){
 
 */  
           
-          if(response.text.indexOf(".csv") == -1){ // MAKE SURE IN CSV FORMAT
-            var filenamed = response.text + ".csv";
-          }
-          else{
-              var filenamed = response.text;
-            }
+          
 
           var formData = {
             token: "xoxp-17426907188-18992194192-20587574146-5566f8cfa5", // make dynamic from db_slackbutton_bot, users, then token
             filename: filenamed,
-            file: fs.createReadStream('testingagain.csv'))  //I think we have to do something with streams here?
+            file: fs.createReadStream('testingagain.csv')  //I think we have to do something with streams here?
           };
 
           request({
@@ -295,8 +295,6 @@ askViewBy = function(response, convo){
 
           //TODO : Then retrieve file and convo.say with attachment.  
 
-            convo.next();
-          });
           convo.next();
         }
       },
