@@ -2,10 +2,12 @@ from slacker import Slacker
 import pdb 
 import sys 
 import json 
+import os 
 
 filename = sys.argv[1]
-slack = Slacker('xoxp-17426907188-18992194192-20808646791-3e978f796d')
+token = sys.argv[2]
+slack = Slacker(token)
 response = slack.files.upload(filename)
 print(response.body['file']['permalink'])
-
+os.remove(filename)
 sys.stdout.flush()

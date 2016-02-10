@@ -5,6 +5,14 @@ var Promise = require('promise');
 var request = require('request');
 var fs = require('fs');
 
+var fs = require('fs');
+var csvWriter = require('csv-write-stream');
+
+
+var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d";
+
+
+
 require('./env.js');
 
 if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
@@ -167,11 +175,6 @@ function cleanInputs(){
 controller.hears(['question'],['direct_message','direct_mention','mention'],function(bot,message) {
   bot.reply(message, "What do you have a question about?");
   cleanInputs();
-  var test= "testinggg";
-  localStorage.setItem("temp", test);
-  var tt = localStorage.getItem("temp");
-  convols.log(tt);
-
   bot.startConversation(message, askTable);
 });
 
@@ -260,44 +263,72 @@ askViewBy = function(response, convo){
     {
       pattern: 'raw data',
       callback: function(response,convo) {
-            var filename = queryOptions.table + "_" + queryOptions.filter + "_";        
-            /*
-            query = buildQuery();
+          //convo.next();
+            console.log(queryOptions);
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth()+1; //January is 0!
+            var yyyy = today.getFullYear();
+
+            var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
+
+            var query = "SELECT * FROM orders";
             connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'avg(`' + view.field + '`)';
-              var average = results[0][key];
-              convo.say("Average: " + average);
-            });
-
-
-*/  
-          
-          
-
-          var formData = {
-            token: "xoxp-17426907188-18992194192-20587574146-5566f8cfa5", // make dynamic from db_slackbutton_bot, users, then token
-            filename: filenamed,
-            file: fs.createReadStream('testingagain.csv')  //I think we have to do something with streams here?
-          };
-
-          request({
-            method: 'POST',
-            url: 'https://slack.com/api/files.upload',
-            form: formData
-          }, function(err, res, body) {
-            if(err){
-              console.log(err);
+             var keys = Object.keys(results[0])
+             var writer = csvWriter({ headers: keys})
+             writer.pipe(fs.createWriteStream(filename));
+             for(i=0; i<results.length; i++){
+              var vals = [];
+              for(j=0; j<keys.length; j++){
+                vals.push(results[i][keys[j]]);
+              }
+              writer.write(vals);
             }
-            else{
-                console.log(JSON.stringify(body, null, 2));
-            }
+            writer.end()
           });
 
-          //TODO : Then retrieve file and convo.say with attachment.  
+            /*
+            convo.say("Attached", function(response, convo){
+              convo.say("BLAH");
+            });
+*/
 
-          convo.next();
+            var options = {
+              mode: "text",
+              args: [filename, token]
+            };
+
+            var PythonShell = require('python-shell');
+            PythonShell.run('upload.py', options, function (err, results) { 
+              if(err){
+                console.log(err);
+              }
+              else{
+                            //convo.say("BLAH");
+
+      var attachment = [];
+          var attach=            
+        {
+            "fallback": "Data Results...",
+            "pretext": "Attached are your results",
+            "title": "SQL Results",
+            "title_link": results[0],
+            "text": "Data Attachment.",
+            "color": "#7CD197"
+        };
+        attachment.push(attach);
+        console.log(attachment);
+        //convo.say("here");
+
+convo.say("attached", {attachments:attachment});
+
+                console.log(results);
         }
-      },
+      });
+        convo.next();
+
+      }
+    },
       {
         pattern: 'average',
         callback: function(response,convo) {
