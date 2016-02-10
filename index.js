@@ -168,6 +168,7 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
   bot.startConversation(message, askTable);
 });
 
+//TODO: ADD ERROR RESPONSE IF USER RESPONDS WITH A TABLE THAT DOESN'T EXIST
 askTable = function(response, convo){
   //get the different tables
   connection.query({
@@ -196,6 +197,7 @@ askFilterType = function(response, convo){
 
   //get column titles of specified table, put into columns[]
   connection.query('SHOW COLUMNS FROM ' + selectedTable +';', function(err, rows, fields) {
+    console.log('query running');
     if(err || rows === undefined){
       convo.say("There was an error getting the schema for table `" + selectedTable + "`");
     }
@@ -220,7 +222,6 @@ askFilterType = function(response, convo){
         askViewBy(response,convo);
         convo.next()
       }
-
       else{
         filter.field = response.text;
         askFilterDetails(response, convo);
@@ -235,8 +236,10 @@ askFilterDetails = function(response, convo){
   var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'");
   query.on('error', function(err) {
     throw err;
+      console.log('weeeooooweeeeoooo error');
   });
   query.on('result', function(row) {
+    console.log('filterquery2 running');
     var filterDataType = row['DATA_TYPE'];
     var options = {
       "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`",
@@ -461,6 +464,28 @@ function buildQuery(){
   else if (filter == "Past 30 days"){
     if (filterDataType == "timestamp"){
       var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND " + field + " < CURDATE()"
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
+  }
+  else if (filter == "Last Week"){
+    if (filterDataType == "timestamp"){
+    }
+    else if (filterDataType == "date"){
+      //do something
+    }
+    else if (filterDataType == "datetime"){
+      //do something
+    }
+  }
+  else if (filter == "Last Month"){
+    if (filterDataType == "timestamp"){
+      var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(" + field + ") = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)"
+      console.log(whereStatement);
     }
     else if (filterDataType == "date"){
       //do something
