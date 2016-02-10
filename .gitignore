@@ -2,3 +2,4 @@ env.js
 *.log
 db_slackbutton_bot/
 node_modules/
+index.html
