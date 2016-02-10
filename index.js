@@ -168,7 +168,6 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
   bot.startConversation(message, askTable);
 });
 
-//TODO: ADD ERROR RESPONSE IF USER RESPONDS WITH A TABLE THAT DOESN'T EXIST
 askTable = function(response, convo){
   //get the different tables
   connection.query({
@@ -193,11 +192,10 @@ askFilterType = function(response, convo){
   //ask user if they would like to apply any filters
   selectedTable = response.text;
 
-  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to apply any filters to narrow your search? (Select a Field to filter by or say `NO`)");
+  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to filter down your answer at all?");
 
   //get column titles of specified table, put into columns[]
   connection.query('SHOW COLUMNS FROM ' + selectedTable +';', function(err, rows, fields) {
-    console.log('query running');
     if(err || rows === undefined){
       convo.say("There was an error getting the schema for table `" + selectedTable + "`");
     }
@@ -215,18 +213,9 @@ askFilterType = function(response, convo){
     convo.ask(columns.toString(), function(response, convo){
       //add field to filter object
       var response = response.text.toLowerCase();
-
-      //if user responds no to "Do you want to add a filter"//
-      if (response == "no" || response =="nah" || response =="nope" || response == "n"){
-        queryOptions.filter = null;
-        askViewBy(response,convo);
-        convo.next()
-      }
-      else{
-        filter.field = response.text;
-        askFilterDetails(response, convo);
-        convo.next();
-      }
+      filter.field = response;
+      askFilterDetails(response, convo);
+      convo.next();
     });
     }
   });
@@ -236,20 +225,16 @@ askFilterDetails = function(response, convo){
   var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'");
   query.on('error', function(err) {
     throw err;
-      console.log('weeeooooweeeeoooo error');
   });
   query.on('result', function(row) {
-    console.log('filterquery2 running');
     var filterDataType = row['DATA_TYPE'];
     var options = {
-      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`",
-      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
-      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
-      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`",
-      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
-      "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
-      "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`",
-
+      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
+      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+      "time" : "`TO DO.....:tophat:`"
     };
 
     convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
@@ -257,7 +242,6 @@ askFilterDetails = function(response, convo){
       //add filter details to filter object
       filter.filter = response.text;
       filter.dataType = filterDataType;
-      console.log(filter);
       //add filter to queryOptions object
       queryOptions.filter = filter;
       askViewBy(response, convo);
@@ -313,13 +297,7 @@ askViewBy = function(response, convo){
             var key = 'count(*)';
             var count = results[0][key];
             console.log(count);
-            //if there is a filter, include it in the response
-            if (queryOptions.filter != null){
-              convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
-            }
-            else{
-              convo.say("There are *" + count + " " + queryOptions.table + "* ");
-            }
+            convo.say("There are *" + count + " " + queryOptions.table + "* from " + queryOptions.filter.filter.toLowerCase());
           });
           convo.next();
         }
@@ -494,7 +472,6 @@ function buildQuery(){
       //do something
     }
   }
-
 
 
   if (viewType == "count"){
