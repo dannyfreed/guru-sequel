@@ -2,6 +2,15 @@
 var Botkit = require('Botkit');
 var mysql = require('mysql');
 var Promise = require('promise');
+var request = require('request');
+var fs = require('fs');
+
+var fs = require('fs');
+var csvWriter = require('csv-write-stream');
+
+
+var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d";
+
 
 
 require('./env.js');
@@ -83,6 +92,7 @@ controller.setupWebserver(process.env.port,function(err,webserver) {
     }
   });
 });
+
 
 
 // just a simple way to make sure we don't
@@ -256,14 +266,72 @@ askViewBy = function(response, convo){
     {
       pattern: 'raw data',
       callback: function(response,convo) {
-          convo.say('you said ' + response.text);
-          viewType = response.text;
+          //convo.next();
+            console.log(queryOptions);
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth()+1; //January is 0!
+            var yyyy = today.getFullYear();
 
-          //PERFORM QUERY, RETURN RAW DATA IN EXCEL FILE
+            var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
 
-          convo.next();
+            var query = "SELECT * FROM orders";
+            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+             var keys = Object.keys(results[0])
+             var writer = csvWriter({ headers: keys})
+             writer.pipe(fs.createWriteStream(filename));
+             for(i=0; i<results.length; i++){
+              var vals = [];
+              for(j=0; j<keys.length; j++){
+                vals.push(results[i][keys[j]]);
+              }
+              writer.write(vals);
+            }
+            writer.end()
+          });
+
+            /*
+            convo.say("Attached", function(response, convo){
+              convo.say("BLAH");
+            });
+*/
+
+            var options = {
+              mode: "text",
+              args: [filename, token]
+            };
+
+            var PythonShell = require('python-shell');
+            PythonShell.run('upload.py', options, function (err, results) { 
+              if(err){
+                console.log(err);
+              }
+              else{
+                            //convo.say("BLAH");
+
+      var attachment = [];
+          var attach=            
+        {
+            "fallback": "Data Results...",
+            "pretext": "Attached are your results",
+            "title": "SQL Results",
+            "title_link": results[0],
+            "text": "Data Attachment.",
+            "color": "#7CD197"
+        };
+        attachment.push(attach);
+        console.log(attachment);
+        //convo.say("here");
+
+convo.say("attached", {attachments:attachment});
+
+                console.log(results);
         }
-      },
+      });
+        convo.next();
+
+      }
+    },
       {
         pattern: 'average',
         callback: function(response,convo) {
