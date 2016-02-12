@@ -8,10 +8,8 @@ var fs = require('fs');
 var csvWriter = require('csv-write-stream');
 
 
-var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d";
+var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d"; //TODO remove hard code and read from env?
 var PythonShell = require('python-shell');
-
-
 
 require('./env.js');
 
@@ -264,16 +262,16 @@ askViewBy = function(response, convo){
     pattern: 'raw data',
     callback: function(response,convo) {
       var filePath = null;
-          //convo.next();
-          console.log(queryOptions);
-          var today = new Date();
-          var dd = today.getDate();
+      console.log(queryOptions);
+      var today = new Date();
+      var dd = today.getDate();
             var mm = today.getMonth()+1; //January is 0!
             var yyyy = today.getFullYear();
 
             var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
+            
+            var query = "SELECT * FROM " + queryOptions.table; // TO DO SEND TO BUILDQUERY TO BUILD OUT QUERY 
 
-            var query = "SELECT * FROM orders";
             connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
              var keys = Object.keys(results[0])
              var writer = csvWriter({ headers: keys})
@@ -288,47 +286,34 @@ askViewBy = function(response, convo){
             writer.end()
           });
 
-
-
-  
-
-var promise = new Promise(function (resolve, reject){
-
-      var options = {mode: "text", args: [filename, token] };
-
-    PythonShell.run('upload.py', options, function (err, results) { 
-  if(err){
-    console.log(err);
-    reject(err);
-  }
-  else{
-
-                            var attachment = [];
-                            var attach=            
-                            {
-                              "fallback": "Data Results...",
-                              "pretext": "Attached are your results",
-                              "title": "SQL Results",
-                              "title_link": results[0],
-                              "text": "Data Attachment.",
-                              "color": "#7CD197"
-                            };
-                            attachment.push(attach);
-                            console.log(attachment);
-                      console.log("in func", results[0]);
+            function uploadFile(){
+              var p1 = new Promise(
+                function(resolve, reject){
+                  var options = {mode: "text", args: [filename, token] };
+                  PythonShell.run('upload.py', options, function (err, results) { 
+                    if(err){
+                      reject(err);
+                      console.log(err);
+                    }
+                    else{
+                      console.log(results);
                       resolve(results[0]);
-      }
-    });
-});
+                    }
+                  });
+                });
+              p1.then(
+                function(val){
+                convo.say({
+                  "text": ">>> Data Results: \n " + val.toString()
+                }
+                );
+              }
+              )
+            }
+            uploadFile();
+            convo.next();
+          }
 
-promise.then(function (data){
-  console.log("in prom", data);
-})
-
-//convo.next();
-
-
-}
 },
 {
   pattern: 'average',
