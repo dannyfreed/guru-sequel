@@ -2,7 +2,6 @@
 var Botkit = require('Botkit');
 var mysql = require('mysql');
 
-
 require('./env.js');
 
 if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
