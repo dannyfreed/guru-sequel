@@ -5,11 +5,11 @@ var Promise = require('promise');
 var request = require('request');
 var fs = require('fs');
 
-var fs = require('fs');
 var csvWriter = require('csv-write-stream');
 
 
 var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d";
+var PythonShell = require('python-shell');
 
 
 
@@ -44,11 +44,11 @@ var knex = require('knex')({
 var controller = Botkit.slackbot({
   json_file_store: './db_slackbutton_bot/',
 }).configureSlackApp(
-  {
-    clientId: process.env.clientId,
-    clientSecret: process.env.clientSecret,
-    scopes: ['bot'],
-  }
+{
+  clientId: process.env.clientId,
+  clientSecret: process.env.clientSecret,
+  scopes: ['bot'],
+}
 );
 
 //handle database creds form
@@ -155,19 +155,19 @@ tableFields = [];
 
 function cleanInputs(){
   if(tableFields.length != 0){
-      tableFields.length = 0;
+    tableFields.length = 0;
     for (var vals in queryOptions){
-        if(queryOptions.vals == "table" && queryOptions.table != ""){
-          queryOptions.table = "";
-        }
-        if(queryOptions.vals == "filter" && queryOptions.filter.field != "" || queryOptions.filter.filter != ""){
-          queryOptions.filter.field = "";
-          queryOptions.filter.filter = "";
-        }
-        if(queryOptions.vals == "view" && queryOptions.view.type != "" || queryOptions.view.field != ""){
-          queryOptions.view.type = "";
-          queryOptions.view.field = "";
-        }
+      if(queryOptions.vals == "table" && queryOptions.table != ""){
+        queryOptions.table = "";
+      }
+      if(queryOptions.vals == "filter" && queryOptions.filter.field != "" || queryOptions.filter.filter != ""){
+        queryOptions.filter.field = "";
+        queryOptions.filter.filter = "";
+      }
+      if(queryOptions.vals == "view" && queryOptions.view.type != "" || queryOptions.view.field != ""){
+        queryOptions.view.type = "";
+        queryOptions.view.field = "";
+      }
     }
   }
 }
@@ -226,8 +226,8 @@ askFilterType = function(response, convo){
       askFilterDetails(response, convo);
       convo.next();
     });
-    }
-  });
+  }
+});
 }
 
 askFilterDetails = function(response, convo){
@@ -260,13 +260,14 @@ askFilterDetails = function(response, convo){
 //filterType = column title
 askViewBy = function(response, convo){
   convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`, `max`, `min` ",[
-    {
-      pattern: 'raw data',
-      callback: function(response,convo) {
+  {
+    pattern: 'raw data',
+    callback: function(response,convo) {
+      var filePath = null;
           //convo.next();
-            console.log(queryOptions);
-            var today = new Date();
-            var dd = today.getDate();
+          console.log(queryOptions);
+          var today = new Date();
+          var dd = today.getDate();
             var mm = today.getMonth()+1; //January is 0!
             var yyyy = today.getFullYear();
 
@@ -287,150 +288,150 @@ askViewBy = function(response, convo){
             writer.end()
           });
 
-            /*
-            convo.say("Attached", function(response, convo){
-              convo.say("BLAH");
-            });
-*/
 
-            var options = {
-              mode: "text",
-              args: [filename, token]
-            };
 
-            var PythonShell = require('python-shell');
-            PythonShell.run('upload.py', options, function (err, results) { 
-              if(err){
-                console.log(err);
-              }
-              else{
-                            //convo.say("BLAH");
+  
 
-      var attachment = [];
-          var attach=            
-        {
-            "fallback": "Data Results...",
-            "pretext": "Attached are your results",
-            "title": "SQL Results",
-            "title_link": results[0],
-            "text": "Data Attachment.",
-            "color": "#7CD197"
-        };
-        attachment.push(attach);
-        console.log(attachment);
-        //convo.say("here");
+var promise = new Promise(function (resolve, reject){
 
-convo.say("attached", {attachments:attachment});
+      var options = {mode: "text", args: [filename, token] };
 
-                console.log(results);
-        }
-      });
-        convo.next();
-
-      }
-    },
-      {
-        pattern: 'average',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the average of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'avg(`' + view.field + '`)';
-              var average = results[0][key];
-              convo.say("Average: " + average);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      },
-      {
-        pattern: 'count',
-        callback: function(response, convo) {
-          var viewType = response.text;
-          view.type = viewType;
-          view.field = null;
-          queryOptions.view = view;
-          var query = buildQuery();
-          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-            console.log(results);
-            var key = 'count(*)';
-            var count = results[0][key];
-            console.log(count);
-            convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
-          });
-          convo.next();
-        }
-      },
-      {
-        pattern: 'sum',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the sum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              console.log(results);
-              var key = 'sum(`' + view.field + '`)';
-              var sum = results[0][key];
-              console.log(sum);
-              convo.say("Sum: " + sum);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      },
-        {
-        pattern: 'max',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the Maximum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'max(`' + view.field + '`)';
-              var max = results[0][key];
-              convo.say("Maximum: " + max);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      },
-            {
-        pattern: 'min',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the Minimum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'min(`' + view.field + '`)';
-              var min = results[0][key];
-              convo.say("Minimum: " + min);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      }
-    ]);
+    PythonShell.run('upload.py', options, function (err, results) { 
+  if(err){
+    console.log(err);
+    reject(err);
   }
+  else{
+
+                            var attachment = [];
+                            var attach=            
+                            {
+                              "fallback": "Data Results...",
+                              "pretext": "Attached are your results",
+                              "title": "SQL Results",
+                              "title_link": results[0],
+                              "text": "Data Attachment.",
+                              "color": "#7CD197"
+                            };
+                            attachment.push(attach);
+                            console.log(attachment);
+                      console.log("in func", results[0]);
+                      resolve(results[0]);
+      }
+    });
+});
+
+promise.then(function (data){
+  console.log("in prom", data);
+})
+
+//convo.next();
+
+
+}
+},
+{
+  pattern: 'average',
+  callback: function(response,convo) {
+    convo.say('What field do you want to get the average of?');
+    var viewType = response.text;
+    view.type = viewType;
+    convo.ask(tableFields.toString(), function(response, convo){
+      view.field = response.text;
+      queryOptions.view = view;
+      query = buildQuery();
+      connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+        var key = 'avg(`' + view.field + '`)';
+        var average = results[0][key];
+        convo.say("Average: " + average);
+      });
+      convo.next();
+    });
+    convo.next();
+  }
+},
+{
+  pattern: 'count',
+  callback: function(response, convo) {
+    var viewType = response.text;
+    view.type = viewType;
+    view.field = null;
+    queryOptions.view = view;
+    var query = buildQuery();
+    connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+      console.log(results);
+      var key = 'count(*)';
+      var count = results[0][key];
+      console.log(count);
+      convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
+    });
+    convo.next();
+  }
+},
+{
+  pattern: 'sum',
+  callback: function(response,convo) {
+    convo.say('What field do you want to get the sum of?');
+    var viewType = response.text;
+    view.type = viewType;
+    convo.ask(tableFields.toString(), function(response, convo){
+      view.field = response.text;
+      queryOptions.view = view;
+      query = buildQuery();
+      connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+        console.log(results);
+        var key = 'sum(`' + view.field + '`)';
+        var sum = results[0][key];
+        console.log(sum);
+        convo.say("Sum: " + sum);
+      });
+      convo.next();
+    });
+    convo.next();
+  }
+},
+{
+  pattern: 'max',
+  callback: function(response,convo) {
+    convo.say('What field do you want to get the Maximum of?');
+    var viewType = response.text;
+    view.type = viewType;
+    convo.ask(tableFields.toString(), function(response, convo){
+      view.field = response.text;
+      queryOptions.view = view;
+      query = buildQuery();
+      connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+        var key = 'max(`' + view.field + '`)';
+        var max = results[0][key];
+        convo.say("Maximum: " + max);
+      });
+      convo.next();
+    });
+    convo.next();
+  }
+},
+{
+  pattern: 'min',
+  callback: function(response,convo) {
+    convo.say('What field do you want to get the Minimum of?');
+    var viewType = response.text;
+    view.type = viewType;
+    convo.ask(tableFields.toString(), function(response, convo){
+      view.field = response.text;
+      queryOptions.view = view;
+      query = buildQuery();
+      connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+        var key = 'min(`' + view.field + '`)';
+        var min = results[0][key];
+        convo.say("Minimum: " + min);
+      });
+      convo.next();
+    });
+    convo.next();
+  }
+}
+]);
+}
 
 
 
