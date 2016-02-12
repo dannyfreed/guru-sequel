@@ -1,7 +1,6 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
 var Botkit = require('Botkit');
 var mysql = require('mysql');
-var Promise = require('promise');
 
 
 require('./env.js');
@@ -234,7 +233,8 @@ askFilterDetails = function(response, convo){
       "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
       "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
       "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "time" : "`TO DO.....:tophat:`"
+      "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+      "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
     };
 
     convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
@@ -405,6 +405,8 @@ function buildQuery(){
     var filterDataType = queryOptions.filter.dataType;
   }
 
+  var whereStatement = null;
+
   //set where statement based off of filter + field
   if (filter == "Today"){
     if (filterDataType == "timestamp"){
@@ -452,6 +454,7 @@ function buildQuery(){
   }
   else if (filter == "Last Week"){
     if (filterDataType == "timestamp"){
+        var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 WEEK) AND WEEK(" + field + ") = WEEK(CURRENT_DATE - INTERVAL 1 WEEK)"
     }
     else if (filterDataType == "date"){
       //do something
@@ -472,10 +475,62 @@ function buildQuery(){
       //do something
     }
   }
-
+  else if (filter == "Last Year"){
+      if (filterDataType == "timestamp"){
+        var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 YEAR)"
+        console.log(whereStatement);
+      }
+      else if (filterDataType == "date"){
+        //do something
+      }
+      else if (filterDataType == "datetime"){
+        //do something
+      }
+  }
+  else if (filter == "This Week"){
+      if (filterDataType == "timestamp"){
+        var whereStatement =  "WEEKOFYEAR(" + field + ") = WEEKOFYEAR(NOW())";
+        console.log(whereStatement);
+      }
+      else if (filterDataType == "date"){
+        //do something
+      }
+      else if (filterDataType == "datetime"){
+        //do something
+      }
+  }
+  else if (filter == "This Month"){
+      if (filterDataType == "timestamp"){
+        var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY)"
+        console.log(whereStatement);
+      }
+      else if (filterDataType == "date"){
+        //do something
+      }
+      else if (filterDataType == "datetime"){
+        //do something
+      }
+  }
+  else if (filter == "This Year"){
+      if (filterDataType == "timestamp"){
+        var whereStatement =  "YEAR(" + field + ") = YEAR(CURDATE())";
+        console.log(whereStatement);
+      }
+      else if (filterDataType == "date"){
+        //do something
+      }
+      else if (filterDataType == "datetime"){
+        //do something
+      }
+  }
 
   if (viewType == "count"){
-    var query = knex(table).whereRaw(whereStatement).count();
+    if(whereStatement == null){
+        var query = knex(table).count();
+    }
+    else{
+        var query = knex(table).whereRaw(whereStatement).count();
+    }
   }
   else if (viewType == "average"){
     var query = knex(table).avg(view.field);
