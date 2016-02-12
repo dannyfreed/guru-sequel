@@ -1,15 +1,11 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
 var Botkit = require('Botkit');
 var mysql = require('mysql');
-<<<<<<< HEAD
 var Promise = require('promise');
 var db = require('mysql-promise')();
 var express = require('express');
 var bodyParser = require('body-parser');
 var app     = express();
-
-=======
->>>>>>> b434fc6f45caa3b7d2729598f3649955f405ffca
 
 require('./env.js');
 
@@ -209,7 +205,6 @@ askFilterType = function(response, convo){
 
         //error checking?
 
-<<<<<<< HEAD
         for(var i = 0; i < rows.length; i++){
             //format selections nicely
             var field = "`" + rows[i]["Field"] + "` ";
@@ -224,20 +219,10 @@ askFilterType = function(response, convo){
             askFilterDetails(response, convo);
             convo.next();
         });
-=======
-    //list column titles, ask user to select one
-    convo.ask(columns.toString(), function(response, convo){
-      //add field to filter object
-      var response = response.text.toLowerCase();
-      filter.field = response;
-      askFilterDetails(response, convo);
-      convo.next();
->>>>>>> b434fc6f45caa3b7d2729598f3649955f405ffca
     });
 }
 
 askFilterDetails = function(response, convo){
-<<<<<<< HEAD
     db.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'").spread(function (row) {
         console.log('ROW', row);
         var options = {
@@ -258,33 +243,6 @@ askFilterDetails = function(response, convo){
             askViewBy(response, convo);
             convo.next();
         });
-=======
-  var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'");
-  query.on('error', function(err) {
-    throw err;
-  });
-  query.on('result', function(row) {
-    var filterDataType = row['DATA_TYPE'];
-    var options = {
-      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
-      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-    };
-
-    convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
-
-      //add filter details to filter object
-      filter.filter = response.text;
-      filter.dataType = filterDataType;
-      //add filter to queryOptions object
-      queryOptions.filter = filter;
-      askViewBy(response, convo);
-      convo.next();
->>>>>>> b434fc6f45caa3b7d2729598f3649955f405ffca
     });
 }
 
@@ -330,21 +288,11 @@ askViewBy = function(response, convo){
           view.field = null;
           queryOptions.view = view;
           var query = buildQuery();
-<<<<<<< HEAD
           db.query(query).spread(function(results){
               var key = 'count(*)';
               var count = results[0][key];
               console.log(count);
               convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
-=======
-          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-            console.log(results);
-            var key = 'count(*)';
-            var count = results[0][key];
-            console.log(count);
-            convo.say("There are *" + count + " " + queryOptions.table + "* from " + queryOptions.filter.filter.toLowerCase());
->>>>>>> b434fc6f45caa3b7d2729598f3649955f405ffca
-          });
           convo.next();
         }
       },
