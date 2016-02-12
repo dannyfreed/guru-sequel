@@ -1,6 +1,12 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
 var Botkit = require('Botkit');
 var mysql = require('mysql');
+var Promise = require('promise');
+var db = require('mysql-promise')();
+var express = require('express');
+var bodyParser = require('body-parser');
+var app     = express();
+
 
 require('./env.js');
 
@@ -24,11 +30,19 @@ connection = mysql.createConnection({
   password : password,
   database : database
 });
-
 var knex = require('knex')({
   client: 'mysql',
   connection: connection
 });
+
+var connection2 = db.configure({
+	"host": host,
+	"user": username,
+	"password": password,
+	"database": database
+});
+
+
 
 var controller = Botkit.slackbot({
   json_file_store: './db_slackbutton_bot/',
@@ -42,9 +56,6 @@ var controller = Botkit.slackbot({
 
 //handle database creds form
 
-var express = require('express');
-var bodyParser = require('body-parser');
-var app     = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -167,86 +178,73 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
 });
 
 askTable = function(response, convo){
-  //get the different tables
-  connection.query({
-    sql : "show tables",
-    timeout : 40000
-  }, function(error, results, fields){
-    var tables = [];
-    //put tables in an array
-    for(i=0; i<results.length; i++){
-      tables.push("`" + results[i]['Tables_in_' + database] + "` ");
-    }
-    //ask user which table they are interested in (Orders, People, etc.)
-    convo.ask(tables.toString(), function(response,convo){
-      queryOptions.table = response.text;
-      askFilterType(response, convo);
-      convo.next();
+    db.query('show tables').spread(function (results) {
+        var tables = [];
+        //put tables in an array
+        for(i=0; i<results.length; i++){
+          tables.push("`" + results[i]['Tables_in_' + database] + "` ");
+        }
+        //ask user which table they are interested in (Orders, People, etc.)
+        convo.ask(tables.toString(), function(response,convo){
+          queryOptions.table = response.text;
+          askFilterType(response, convo);
+          convo.next();
+        });
     });
-  });
 }
 
 askFilterType = function(response, convo){
   //ask user if they would like to apply any filters
   selectedTable = response.text;
+  var query = 'SHOW COLUMNS FROM ' + selectedTable + ';';
 
-  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to filter down your answer at all?");
+  convo.say("Ok. I've got your list of *" + selectedTable + "* right here. Would you like to apply any filters to narrow your search?");
 
   //get column titles of specified table, put into columns[]
-  connection.query('SHOW COLUMNS FROM ' + selectedTable +';', function(err, rows, fields) {
-    if(err || rows === undefined){
-      convo.say("There was an error getting the schema for table `" + selectedTable + "`");
-    }
-    else{
-      var columns = [];
-      for(var i = 0; i < rows.length; i++){
-        //format selections nicely
-        var field = "`" + rows[i]["Field"] + "` ";
-        //add to columns array
-        columns.push(field);
-        tableFields.push(field);
-      }
+    db.query(query).spread(function (rows, field) {
+        var columns = [];
 
-    //list column titles, ask user to select one
-    convo.ask(columns.toString(), function(response, convo){
-      //add field to filter object
-      var response = response.text.toLowerCase();
-      filter.field = response;
-      askFilterDetails(response, convo);
-      convo.next();
+        //error checking?
+
+        for(var i = 0; i < rows.length; i++){
+            //format selections nicely
+            var field = "`" + rows[i]["Field"] + "` ";
+            //add to columns array
+            columns.push(field);
+            tableFields.push(field);
+        }
+        //list column titles, ask user to select one
+        convo.ask(columns.toString(), function(response, convo){
+            //add field to filter object
+            filter.field = response.text;
+            askFilterDetails(response, convo);
+            convo.next();
+        });
     });
-    }
-  });
 }
 
 askFilterDetails = function(response, convo){
-  var query = connection.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'");
-  query.on('error', function(err) {
-    throw err;
-  });
-  query.on('result', function(row) {
-    var filterDataType = row['DATA_TYPE'];
-    var options = {
-      "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
-      "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-      "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-      "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-    };
-
-    convo.ask("What would you like to filter by? \n" + options[row['DATA_TYPE']], function(response, convo){
-
-      //add filter details to filter object
-      filter.filter = response.text;
-      filter.dataType = filterDataType;
-      //add filter to queryOptions object
-      queryOptions.filter = filter;
-      askViewBy(response, convo);
-      convo.next();
+    db.query("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'").spread(function (row) {
+        console.log('ROW', row);
+        var options = {
+          "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
+          "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+          "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+          "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+          "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+          "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+          "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+        };
+        var dataTypeOptions = options[row[0]['DATA_TYPE']];
+        convo.ask("What would you like to filter by? \n" + dataTypeOptions, function(response, convo){
+            //add filter details to filter object
+            filter.filter = response.text;
+            //add filter to queryOptions object
+            queryOptions.filter = filter;
+            askViewBy(response, convo);
+            convo.next();
+        });
     });
-  });
 }
 
 //filterType = column title
@@ -269,18 +267,18 @@ askViewBy = function(response, convo){
           convo.say('What field do you want to get the average of?');
           var viewType = response.text;
           view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'avg(`' + view.field + '`)';
-              var average = results[0][key];
-              convo.say("Average: " + average);
+            convo.ask(tableFields.toString(), function(response, convo){
+                view.field = response.text;
+                queryOptions.view = view;
+                query = buildQuery();
+                db.query(query).spread(function(results){
+                    var key = 'avg(`' + view.field + '`)';
+                    var average = results[0][key];
+                    convo.say("Average: " + average);
+                });
+                convo.next();
             });
             convo.next();
-          });
-          convo.next();
         }
       },
       {
@@ -291,12 +289,11 @@ askViewBy = function(response, convo){
           view.field = null;
           queryOptions.view = view;
           var query = buildQuery();
-          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-            console.log(results);
-            var key = 'count(*)';
-            var count = results[0][key];
-            console.log(count);
-            convo.say("There are *" + count + " " + queryOptions.table + "* from " + queryOptions.filter.filter.toLowerCase());
+          db.query(query).spread(function(results){
+              var key = 'count(*)';
+              var count = results[0][key];
+              console.log(count);
+              convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
           });
           convo.next();
         }
@@ -401,135 +398,19 @@ function buildQuery(){
   if(queryOptions.filter != null){
     var filter = queryOptions.filter.filter;
     var field = queryOptions.filter.field;
-    var filterDataType = queryOptions.filter.dataType;
   }
-
-  var whereStatement = null;
 
   //set where statement based off of filter + field
   if (filter == "Today"){
-    if (filterDataType == "timestamp"){
-      var whereStatement = field + " >= CURDATE()";
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
+    var whereStatement = field + " >= CURDATE()";
   }
   else if (filter == "Yesterday"){
-    if (filterDataType == "timestamp"){
-      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND " + field + " < CURDATE()"
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
-  }
-  else if (filter == "Past 7 days"){
-    if (filterDataType == "timestamp"){
-      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND " + field + " < CURDATE()"
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
-  }
-  else if (filter == "Past 30 days"){
-    if (filterDataType == "timestamp"){
-      var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND " + field + " < CURDATE()"
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
-  }
-  else if (filter == "Last Week"){
-    if (filterDataType == "timestamp"){
-        var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 WEEK) AND WEEK(" + field + ") = WEEK(CURRENT_DATE - INTERVAL 1 WEEK)"
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
-  }
-  else if (filter == "Last Month"){
-    if (filterDataType == "timestamp"){
-      var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(" + field + ") = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)"
-      console.log(whereStatement);
-    }
-    else if (filterDataType == "date"){
-      //do something
-    }
-    else if (filterDataType == "datetime"){
-      //do something
-    }
-  }
-  else if (filter == "Last Year"){
-      if (filterDataType == "timestamp"){
-        var whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 YEAR)"
-        console.log(whereStatement);
-      }
-      else if (filterDataType == "date"){
-        //do something
-      }
-      else if (filterDataType == "datetime"){
-        //do something
-      }
-  }
-  else if (filter == "This Week"){
-      if (filterDataType == "timestamp"){
-        var whereStatement =  "WEEKOFYEAR(" + field + ") = WEEKOFYEAR(NOW())";
-        console.log(whereStatement);
-      }
-      else if (filterDataType == "date"){
-        //do something
-      }
-      else if (filterDataType == "datetime"){
-        //do something
-      }
-  }
-  else if (filter == "This Month"){
-      if (filterDataType == "timestamp"){
-        var whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY)"
-        console.log(whereStatement);
-      }
-      else if (filterDataType == "date"){
-        //do something
-      }
-      else if (filterDataType == "datetime"){
-        //do something
-      }
-  }
-  else if (filter == "This Year"){
-      if (filterDataType == "timestamp"){
-        var whereStatement =  "YEAR(" + field + ") = YEAR(CURDATE())";
-        console.log(whereStatement);
-      }
-      else if (filterDataType == "date"){
-        //do something
-      }
-      else if (filterDataType == "datetime"){
-        //do something
-      }
+    //build these scenarios out
   }
 
+
   if (viewType == "count"){
-    if(whereStatement == null){
-        var query = knex(table).count();
-    }
-    else{
-        var query = knex(table).whereRaw(whereStatement).count();
-    }
+    var query = knex(table).whereRaw(whereStatement).count();
   }
   else if (viewType == "average"){
     var query = knex(table).avg(view.field);
