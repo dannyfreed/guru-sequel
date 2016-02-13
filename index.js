@@ -228,8 +228,7 @@ function showColumns(table){
 askFilterType = function(response, convo){
     selectedTable = response.text;
     showColumns(selectedTable).then(function(columns){
-        convo.say("Ok. I've got your list of *" + queryOptions.table + "* right here. Would you like to filter down your answer at all?");
-        convo.ask(columns, function(response, convo){
+        convo.ask("Ok. I've got your list of *" + queryOptions.table + "* right here. Would you like to filter down your answer at all? \n" + columns, function(response, convo){
             //add field to filter object
             filter.field = response.text;
             askFilterDetails(response, convo);
