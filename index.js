@@ -6,7 +6,8 @@ var request = require('request');
 var fs = require('fs');
 
 var csvWriter = require('csv-write-stream');
-
+var schedule = require('node-schedule');
+ 
 
 var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d"; //TODO remove hard code and read from env?
 var PythonShell = require('python-shell');
@@ -131,6 +132,7 @@ controller.on('rtm_open',function(bot) {
   console.log('** The RTM api just connected!');
 });
 
+
 controller.on('rtm_close',function(bot) {
   console.log('** The RTM api just closed');
   // you may want to attempt to re-open
@@ -173,7 +175,8 @@ function cleanInputs(){
 controller.hears(['question'],['direct_message','direct_mention','mention'],function(bot,message) {
   bot.reply(message, "What do you have a question about?");
   cleanInputs();
-  bot.startConversation(message, askTable);
+  //bot.startConversation(message, askTable);
+  bot.startConversation(message, cronTask);
 });
 
 askTable = function(response, convo){
@@ -190,7 +193,7 @@ askTable = function(response, convo){
     //ask user which table they are interested in (Orders, People, etc.)
     convo.ask(tables.toString(), function(response,convo){
       queryOptions.table = response.text;
-      askFilterType(response, convo);
+      //askFilterType(response, convo);
       convo.next();
     });
   });
@@ -328,11 +331,14 @@ askViewBy = function(response, convo){
       connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
         var key = 'avg(`' + view.field + '`)';
         var average = results[0][key];
+        console.log(average);
         convo.say("Average: " + average);
       });
       convo.next();
     });
-    convo.next();
+    saveJob(response, convo);
+      convo.next();
+
   }
 },
 {
@@ -419,6 +425,137 @@ askViewBy = function(response, convo){
 }
 
 
+//cleanup can have each function call time needed
+//var values = convo.extractResponses();
+//var value = values.key;
+
+
+cronTask = function(response, convo){
+  var cron;
+  convo.ask("Would you like to run this report? \n `Daily`, `Weekly`, `Monthly`, `None`", [
+  {
+    pattern: 'none',
+    callback: function(response,convo) {
+      convo.stop();
+    }
+  },
+  {
+    pattern: 'daily',
+    callback: function(response,convo) {
+      convo.next();
+      convo.ask("What time, for every minute or hour use `*`? `(Hour (0-23), Min (0-60), Hour-Min)`", function(response, convo){
+        var hour = response.text.split("-")[0];
+        var min = response.text.split("-")[1];
+        if(hour != "*"){
+          hour = parseInt(hour);
+        }
+        if(min != "*"){
+          min = parseInt(min);
+        }
+        if(((min && hour) >= 0 && min <= 60 && hour<= 24) || min == "*" || hour == "*" ) {
+          cron = min + " " + hour + " * * *";
+          saveCronStatus(cron);
+        }
+        else{
+          console.log("not between valid times..");
+        }
+
+      });
+    }
+  },
+  {
+    pattern: 'weekly',
+    callback: function(response,convo) {
+      convo.next();
+      convo.ask("What day of the week? \n `Monday (0)`, `Tuesday (1)`, `Wednesday (2)`, `Thursday (3)`, `Friday (4)`, `Saturday (5)`, `Sunday (6)`, `Everyday (*)`", function(response, convo){
+        var week = response.text;
+        if(week != "*"){
+          week = parseInt(week);
+        }
+        convo.next();
+        convo.ask("What time, for every minute or hour use `*`? `(Hour (0-23), Min (0-60), Hour-Min)`", function(response, convo){
+         var hour = response.text.split("-")[0];
+         var min = response.text.split("-")[1];
+         if(hour != "*"){
+          hour = parseInt(hour);
+        }
+        if(min != "*"){
+          min = parseInt(min);
+        }
+        if(((min && hour) >= 0 && min <= 60 && hour<= 24) || min == "*" || hour == "*" ) {
+          if((week >= 0 && week <= 6) || week =="*"){
+            cron = min + " " + hour + " * * " + week;
+            saveCronStatus(cron);
+          }
+          else{
+            console.log("not between valid times..");
+          } 
+        }
+        else{
+          console.log("not between valid times..");
+       }
+     });
+      });
+}
+},
+{
+  pattern: 'monthly',
+  callback: function(response,convo) {
+    convo.next();
+    convo.ask("What Month? \n `January (1)`, `February (2)`, `March (3)`, `April (4)`, `May (5)`, `June (6)`, `July (7)`, `August (8)`, `September (9)`, `October (10)`, `November (11)`, `December (12)`", function(response, convo){
+      var month = parseInt(response.text);
+      convo.next();
+      convo.ask("What day of the week? \n `Monday (0)`, `Tuesday (1)`, `Wednesday (2)`, `Thursday (3)`, `Friday (4)`, `Saturday (5)`, `Sunday (6)`, `Everyday (*)`", function(response, convo){
+        var week = response.text;
+        if(week != "*"){
+          week = parseInt(week);
+        }
+        convo.next();
+        convo.ask("What time, for every minute or hour use `*`? `(Hour (0-23), Min (0-60), Hour-Min)`", function(response, convo){
+         var hour = response.text.split("-")[0];
+         var min = response.text.split("-")[1];
+         if(hour != "*"){
+          hour = parseInt(hour);
+        }
+        if(min != "*"){
+          min = parseInt(min);
+        }
+        if(((min && hour) >= 0 && min <= 60 && hour<= 24) || min == "*" || hour == "*" ) {
+          if((week >= 0 && week <= 6) || week =="*"){
+           if (month >= 1 && month <= 12) {
+            cron = min + " " + hour + " * " + month + " " + week;
+            saveCronStatus(cron);
+          }
+          else{
+            console.log("not between valid times..");
+          }
+        }
+        else{
+          console.log("not between valid times..");
+        } 
+      }
+      else{
+        console.log("not between valid times..");
+      }
+    });
+      });
+});
+}
+}
+]);
+
+}
+
+
+function saveCronStatus(cron){
+  console.log(cron)
+  var job = schedule.scheduleJob(cron, function(){
+    //DO SOMETHING GET QUERY??? -> Results.
+});
+
+}
+
+
 
 controller.storage.teams.all(function(err,teams) {
 
@@ -482,14 +619,4 @@ function buildQuery(){
 
   console.log('the buildquery query is: ' + query.toString());
   return query.toString();
-
-  // if (filter == "today"){
-  //   var query = "SELECT * FROM " + choices[0] + " WHERE " + columnTitle + " >= CURDATE()";
-  //   console.log('todayyyyy');
-  // }
-  //
-  //
-  // //var query = "SELECT * FROM " + choices[0];
-  // console.log("The query is" + query);
-  // return query;
 }
