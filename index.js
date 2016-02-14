@@ -29,14 +29,33 @@ if (!process.env.clientId || !process.env.clientSecret || !port) {
   process.exit(1);
 }
 
-// //for dev only (makes db info + connection static)
-// if(process.env.host || process.env.username || process.env.password || process.env.database){
-//   host = process.env.host;
-//   username = process.env.username;
-//   password = process.env.password;
-//   database = process.env.database;
-// }
-//
+//for dev only (makes db info + connection static)
+if(process.env.host || process.env.username || process.env.password || process.env.database){
+  host = process.env.host;
+  username = process.env.username;
+  password = process.env.password;
+  database = process.env.database;
+
+  //local only
+  db.configure({
+      "host": host,
+      "user": username,
+      "password": password,
+      "database": database
+  });
+  //global variable so we can use it in other functions
+  connection = mysql.createConnection({
+    host     : host,
+    user     : username,
+    password : password,
+    database : database
+  });
+  var knex = require('knex')({
+    client: 'mysql',
+    connection: connection
+  });
+}
+
 
 
 
