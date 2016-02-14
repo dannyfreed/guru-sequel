@@ -24,10 +24,10 @@ try {
 }
 var port = process.env.PORT || process.env.port;
 
-// if (!process.env.clientId || !process.env.clientSecret || !port) {
-//   console.log('Error: Specify clientId clientSecret and port in environment');
-//   process.exit(1);
-// }
+if (!process.env.clientId || !process.env.clientSecret || !port) {
+  console.log('Error: Specify clientId clientSecret and port in environment');
+  process.exit(1);
+}
 
 // //for dev only (makes db info + connection static)
 // if(process.env.host || process.env.username || process.env.password || process.env.database){
@@ -72,6 +72,7 @@ app.post('/myaction', function(req, res) {
   	"password": password,
   	"database": database
   });
+
   //global variable so we can use it in other functions
   connection = mysql.createConnection({
     host     : host,
