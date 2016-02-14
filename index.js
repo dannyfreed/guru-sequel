@@ -9,16 +9,24 @@ var app     = express();
 
 // Botkit-based Redis store
 var Redis_Store = require('./redis_storage.js');
-var redis_url = "redis://127.0.0.1:6379"
+var redis_url = process.env.REDIS_URL ||"redis://127.0.0.1:6379"
 var redis_store = new Redis_Store({url: redis_url});
 
 Promise.promisifyAll(Botkit);
 
-
+// Programmatically use appropriate process environment variables
+try {
+  require('./env.js');
+} catch (e) {
+  if (e.code === 'MODULE_NOT_FOUND') {
+    console.log('Not using environment variables from env.js');
+  }
+}
+var port = process.env.PORT || process.env.port;
 
 require('./env.js');
 
-if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
+if (!process.env.clientId || !process.env.clientSecret || !port) {
   console.log('Error: Specify clientId clientSecret and port in environment');
   process.exit(1);
 }
@@ -81,7 +89,7 @@ app.listen(8080, function() {
   console.log('Server running at http://127.0.0.1:8080/');
 });
 
-controller.setupWebserver(process.env.port,function(err,webserver) {
+controller.setupWebserver(port,function(err,webserver) {
   controller.createWebhookEndpoints(controller.webserver);
 
   webserver.get('/',function(req,res) {
