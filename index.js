@@ -7,6 +7,11 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var app     = express();
 
+// Botkit-based Redis store
+var Redis_Store = require('./redis_storage.js');
+var redis_url = "redis://127.0.0.1:6379"
+var redis_store = new Redis_Store({url: redis_url});
+
 Promise.promisifyAll(Botkit);
 
 
@@ -48,7 +53,7 @@ db.configure({
 
 
 var controller = Botkit.slackbot({
-  json_file_store: './db_slackbutton_bot/',
+  storage: redis_store,
 }).configureSlackApp(
   {
     clientId: process.env.clientId,
@@ -420,12 +425,12 @@ function buildQuery(){
   console.log("Building Query: ", queryOptions);
 
   var table = queryOptions.table;
-  var viewType = queryOptions.view.type;
+  var viewType = queryOptions.view.type.toLowerCase();
 
 
   //set filter if there is one
   if(queryOptions.filter != null){
-    var filter = queryOptions.filter.filter;
+    var filter = queryOptions.filter.filter.toLowerCase();
     var field = queryOptions.filter.field;
     var filterDataType = queryOptions.filter.dataType;
   }
@@ -434,8 +439,9 @@ function buildQuery(){
 
 
 
+
   //set where statement based off of filter + field
-  if (filter == "Today"){
+  if (filter == "today"){
     if (filterDataType == "timestamp"){
       whereStatement = field + " >= CURDATE()";
     }
@@ -446,7 +452,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Yesterday"){
+  else if (filter == "yesterday"){
     if (filterDataType == "timestamp"){
       whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND " + field + " < CURDATE()"
     }
@@ -457,7 +463,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Past 7 days"){
+  else if (filter == "past 7 days"){
     if (filterDataType == "timestamp"){
       whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND " + field + " < CURDATE()"
     }
@@ -468,7 +474,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Past 30 days"){
+  else if (filter == "past 30 days"){
     if (filterDataType == "timestamp"){
       whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND " + field + " < CURDATE()"
     }
@@ -479,7 +485,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Last Week"){
+  else if (filter == "last week"){
     if (filterDataType == "timestamp"){
         whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 WEEK) AND WEEK(" + field + ") = WEEK(CURRENT_DATE - INTERVAL 1 WEEK)"
     }
@@ -490,7 +496,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Last Month"){
+  else if (filter == "last month"){
     if (filterDataType == "timestamp"){
       whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(" + field + ") = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)"
       console.log(whereStatement);
@@ -502,7 +508,7 @@ function buildQuery(){
       //do something
     }
   }
-  else if (filter == "Last Year"){
+  else if (filter == "last year"){
       if (filterDataType == "timestamp"){
         whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 YEAR)"
         console.log(whereStatement);
@@ -514,7 +520,7 @@ function buildQuery(){
         //do something
       }
   }
-  else if (filter == "This Week"){
+  else if (filter == "this week"){
       if (filterDataType == "timestamp"){
         whereStatement =  "WEEKOFYEAR(" + field + ") = WEEKOFYEAR(NOW())";
         console.log(whereStatement);
@@ -526,7 +532,7 @@ function buildQuery(){
         //do something
       }
   }
-  else if (filter == "This Month"){
+  else if (filter == "this month"){
       if (filterDataType == "timestamp"){
         whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY)"
         console.log(whereStatement);
@@ -538,7 +544,7 @@ function buildQuery(){
         //do something
       }
   }
-  else if (filter == "This Year"){
+  else if (filter == "this year"){
       if (filterDataType == "timestamp"){
         whereStatement =  "YEAR(" + field + ") = YEAR(CURDATE())";
         console.log(whereStatement);
