@@ -1,5 +1,5 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
-var Botkit = require('Botkit');
+var Botkit = require('botkit');
 var mysql = require('mysql');
 var Promise = require("bluebird");
 var db = require('mysql-promise')();
