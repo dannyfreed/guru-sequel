@@ -37,17 +37,6 @@ var port = process.env.PORT || process.env.port;
 //   database = process.env.database;
 // }
 //
-// //global variable so we can use it in other functions
-// connection = mysql.createConnection({
-//   host     : host,
-//   user     : username,
-//   password : password,
-//   database : database
-// });
-var knex = require('knex')({
-  client: 'mysql',
-  connection: connection
-});
 
 
 
@@ -83,7 +72,19 @@ app.post('/myaction', function(req, res) {
   	"password": password,
   	"database": database
   });
-  
+  //global variable so we can use it in other functions
+  connection = mysql.createConnection({
+    host     : host,
+    user     : username,
+    password : password,
+    database : database
+  });
+  var knex = require('knex')({
+    client: 'mysql',
+    connection: connection
+  });
+
+
 });
 
 app.listen(8080, function() {
