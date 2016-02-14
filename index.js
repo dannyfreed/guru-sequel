@@ -24,8 +24,6 @@ try {
 }
 var port = process.env.PORT || process.env.port;
 
-require('./env.js');
-
 if (!process.env.clientId || !process.env.clientSecret || !port) {
   console.log('Error: Specify clientId clientSecret and port in environment');
   process.exit(1);
