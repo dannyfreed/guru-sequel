@@ -29,32 +29,27 @@ var port = process.env.PORT || process.env.port;
 //   process.exit(1);
 // }
 
-//for dev only (makes db info + connection static)
-if(process.env.host || process.env.username || process.env.password || process.env.database){
-  host = process.env.host;
-  username = process.env.username;
-  password = process.env.password;
-  database = process.env.database;
-}
-
-//global variable so we can use it in other functions
-connection = mysql.createConnection({
-  host     : host,
-  user     : username,
-  password : password,
-  database : database
-});
+// //for dev only (makes db info + connection static)
+// if(process.env.host || process.env.username || process.env.password || process.env.database){
+//   host = process.env.host;
+//   username = process.env.username;
+//   password = process.env.password;
+//   database = process.env.database;
+// }
+//
+// //global variable so we can use it in other functions
+// connection = mysql.createConnection({
+//   host     : host,
+//   user     : username,
+//   password : password,
+//   database : database
+// });
 var knex = require('knex')({
   client: 'mysql',
   connection: connection
 });
 
-db.configure({
-	"host": host,
-	"user": username,
-	"password": password,
-	"database": database
-});
+
 
 
 
@@ -81,6 +76,14 @@ app.post('/myaction', function(req, res) {
   username = req.body.username;
   password = req.body.password;
   database = req.body.database;
+
+  db.configure({
+  	"host": host,
+  	"user": username,
+  	"password": password,
+  	"database": database
+  });
+  
 });
 
 app.listen(8080, function() {
