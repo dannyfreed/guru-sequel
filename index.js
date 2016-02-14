@@ -1,5 +1,5 @@
 /* Uses the slack button feature to offer a real time bot to multiple teams */
-var Botkit = require('botkit');
+var Botkit = require('Botkit');
 var mysql = require('mysql');
 var Promise = require("bluebird");
 var db = require('mysql-promise')();
@@ -7,43 +7,48 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var app     = express();
 
-// Botkit-based Redis store
-var Redis_Store = require('./redis_storage.js');
-var redis_url = process.env.REDIS_URL || "redis://127.0.0.1:6379"
-var redis_store = new Redis_Store({url: redis_url});
-
 Promise.promisifyAll(Botkit);
 
-// Programmatically use appropriate process environment variables
-try {
-  require('./env.js');
-} catch (e) {
-  if (e.code === 'MODULE_NOT_FOUND') {
-    console.log('Not using environment variables from env.js');
-  }
-}
-var port = process.env.PORT || process.env.port;
 
-if (!process.env.clientId || !process.env.clientSecret || !port) {
+
+require('./env.js');
+
+if (!process.env.clientId || !process.env.clientSecret || !process.env.port) {
   console.log('Error: Specify clientId clientSecret and port in environment');
   process.exit(1);
 }
 
-// //for dev only (makes db info + connection static)
-// if(process.env.host || process.env.username || process.env.password || process.env.database){
-//   host = process.env.host;
-//   username = process.env.username;
-//   password = process.env.password;
-//   database = process.env.database;
-// }
-//
+//for dev only (makes db info + connection static)
+if(process.env.host || process.env.username || process.env.password || process.env.database){
+  host = process.env.host;
+  username = process.env.username;
+  password = process.env.password;
+  database = process.env.database;
+}
 
+//global variable so we can use it in other functions
+connection = mysql.createConnection({
+  host     : host,
+  user     : username,
+  password : password,
+  database : database
+});
+var knex = require('knex')({
+  client: 'mysql',
+  connection: connection
+});
 
+db.configure({
+	"host": host,
+	"user": username,
+	"password": password,
+	"database": database
+});
 
 
 
 var controller = Botkit.slackbot({
-  storage: redis_store,
+  json_file_store: './db_slackbutton_bot/',
 }).configureSlackApp(
   {
     clientId: process.env.clientId,
@@ -65,34 +70,13 @@ app.post('/myaction', function(req, res) {
   username = req.body.username;
   password = req.body.password;
   database = req.body.database;
-
-  db.configure({
-  	"host": host,
-  	"user": username,
-  	"password": password,
-  	"database": database
-  });
-
-  //global variable so we can use it in other functions
-  connection = mysql.createConnection({
-    host     : host,
-    user     : username,
-    password : password,
-    database : database
-  });
-  var knex = require('knex')({
-    client: 'mysql',
-    connection: connection
-  });
-
-
 });
 
 app.listen(8080, function() {
   console.log('Server running at http://127.0.0.1:8080/');
 });
 
-controller.setupWebserver(port,function(err,webserver) {
+controller.setupWebserver(process.env.port,function(err,webserver) {
   controller.createWebhookEndpoints(controller.webserver);
 
   webserver.get('/',function(req,res) {
