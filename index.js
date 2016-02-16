@@ -331,7 +331,7 @@ askViewBy = function(response, convo){
             
             var query = buildQuery();
             console.log(query.toString());
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+            db.query(query).spread(function(results){
              var keys = Object.keys(results[0])
              var writer = csvWriter({ headers: keys})
              writer.pipe(fs.createWriteStream(filename));
