@@ -6,7 +6,11 @@ var db = require('mysql-promise')();
 var express = require('express');
 var bodyParser = require('body-parser');
 var app     = express();
+var csvWriter = require('csv-write-stream');
+var PythonShell = require('python-shell');
+var fs = require("fs");
 
+var token = "xoxp-17426907188-18992194192-20808646791-3e978f796d"; //TODO remove hard code and read from env?
 // Botkit-based Redis store
 var Redis_Store = require('./redis_storage.js');
 var redis_url = process.env.REDIS_URL || "redis://127.0.0.1:6379"
@@ -36,6 +40,7 @@ if(process.env.host || process.env.username || process.env.password || process.e
   password = process.env.password;
   database = process.env.database;
 
+  console.log(host, username, password, database);
   //local only
   db.configure({
       "host": host,
@@ -55,9 +60,6 @@ if(process.env.host || process.env.username || process.env.password || process.e
     connection: connection
   });
 }
-
-
-
 
 
 
@@ -194,14 +196,14 @@ function cleanInputs(){
   if(tableFields.length != 0){
       tableFields.length = 0;
     for (var vals in queryOptions){
-        if(queryOptions.vals == "table" && queryOptions.table != ""){
+        if(queryOptions.vals == "table"){
           queryOptions.table = "";
         }
-        if(queryOptions.vals == "filter" && queryOptions.filter.field != "" || queryOptions.filter.filter != ""){
+        if(queryOptions.vals == "filter"){
           queryOptions.filter.field = "";
           queryOptions.filter.filter = "";
         }
-        if(queryOptions.vals == "view" && queryOptions.view.type != "" || queryOptions.view.field != ""){
+        if(queryOptions.vals == "view"){
           queryOptions.view.type = "";
           queryOptions.view.field = "";
         }
@@ -309,21 +311,69 @@ askFilterDetails = function(response, convo){
 }
 
 
-//NOT SURE HOW TO PROMISIFY THIS ¯\_(ツ)_/¯
 //filterType = column title
 askViewBy = function(response, convo){
   convo.ask("What would you like to view by? \n `Raw Data`, `Count`, `Average`, `Sum`, `max`, `min` ",[
-    {
-      pattern: 'raw data',
-      callback: function(response,convo) {
-          convo.say('you said ' + response.text);
-          viewType = response.text;
+  {
+    pattern: 'raw data',
+    callback: function(response,convo) {
+      view.type = "raw data";
+      queryOptions.view = view; //May need to add field type? not sure
 
-          //PERFORM QUERY, RETURN RAW DATA IN EXCEL FILE
+      var filePath = null;
+      console.log(queryOptions);
+      var today = new Date();
+      var dd = today.getDate();
+            var mm = today.getMonth()+1; //January is 0!
+            var yyyy = today.getFullYear();
 
-          convo.next();
-        }
-      },
+            var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
+            
+            var query = buildQuery();
+            console.log(query.toString());
+            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+             var keys = Object.keys(results[0])
+             var writer = csvWriter({ headers: keys})
+             writer.pipe(fs.createWriteStream(filename));
+             for(i=0; i<results.length; i++){
+              var vals = [];
+              for(j=0; j<keys.length; j++){
+                vals.push(results[i][keys[j]]);
+              }
+              writer.write(vals);
+            }
+            writer.end()
+          });
+
+            function uploadFile(){
+              var p1 = new Promise(
+                function(resolve, reject){
+                  var options = {mode: "text", args: [filename, token] };
+                  PythonShell.run('upload.py', options, function (err, results) { 
+                    if(err){
+                      reject(err);
+                      console.log(err);
+                    }
+                    else{
+                      console.log(results);
+                      resolve(results[0]);
+                    }
+                  });
+                });
+              p1.then(
+                function(val){
+                convo.say({
+                  "text": ">>> Data Results: \n " + val.toString()
+                }
+                );
+              }
+              )
+            }
+            uploadFile();
+            convo.next();
+          }
+
+},
       {
         pattern: 'average',
         callback: function(response,convo) {
@@ -595,6 +645,9 @@ function buildQuery(){
     console.log(whereStatement);
     //will automatically handle null where statments :)
     var query = knex(table).whereRaw(whereStatement).count();
+  }
+  else if(viewType == "raw data"){
+    var query = knex(table).whereRaw(whereStatement);
   }
   else if (viewType == "average"){
     var query = knex(table).avg(view.field);
