@@ -43,10 +43,10 @@ if(process.env.host || process.env.username || process.env.password || process.e
   console.log(host, username, password, database);
   //local only
   db.configure({
-      "host": host,
-      "user": username,
-      "password": password,
-      "database": database
+    "host": host,
+    "user": username,
+    "password": password,
+    "database": database
   });
   //global variable so we can use it in other functions
   connection = mysql.createConnection({
@@ -66,11 +66,11 @@ if(process.env.host || process.env.username || process.env.password || process.e
 var controller = Botkit.slackbot({
   storage: redis_store,
 }).configureSlackApp(
-  {
-    clientId: process.env.clientId,
-    clientSecret: process.env.clientSecret,
-    scopes: ['bot'],
-  }
+{
+  clientId: process.env.clientId,
+  clientSecret: process.env.clientSecret,
+  scopes: ['bot'],
+}
 );
 
 //handle database creds form
@@ -194,19 +194,19 @@ tableFields = [];
 
 function cleanInputs(){
   if(tableFields.length != 0){
-      tableFields.length = 0;
+    tableFields.length = 0;
     for (var vals in queryOptions){
-        if(queryOptions.vals == "table"){
-          queryOptions.table = "";
-        }
-        if(queryOptions.vals == "filter"){
-          queryOptions.filter.field = "";
-          queryOptions.filter.filter = "";
-        }
-        if(queryOptions.vals == "view"){
-          queryOptions.view.type = "";
-          queryOptions.view.field = "";
-        }
+      if(queryOptions.vals == "table"){
+        queryOptions.table = "";
+      }
+      if(queryOptions.vals == "filter"){
+        queryOptions.filter.field = "";
+        queryOptions.filter.filter = "";
+      }
+      if(queryOptions.vals == "view"){
+        queryOptions.view.type = "";
+        queryOptions.view.field = "";
+      }
     }
   }
 }
@@ -218,37 +218,37 @@ controller.hears(['question'],['direct_message','direct_mention','mention'],func
 });
 
 function showTables(){
-    return new Promise(function (resolve, reject){
-        console.log('1. making request');
+  return new Promise(function (resolve, reject){
+    console.log('1. making request');
 
-        db.query('show tables').spread(function (results) {
-            var tables = [];
+    db.query('show tables').spread(function (results) {
+      var tables = [];
             //put tables in an array
             for(i=0; i<results.length; i++){
               tables.push("`" + results[i]['Tables_in_' + database] + "` ");
             }
             resolve(tables.toString());
-        });
-    });
+          });
+  });
 }
 
 askTable = function(response, convo){
-    showTables().then(function(tables){
-        convo.ask(tables, function(response, convo){
-            queryOptions.table = response.text;
-            console.log(queryOptions);
-            askFilterType(response,convo);
-            convo.next();
-        });
+  showTables().then(function(tables){
+    convo.ask(tables, function(response, convo){
+      queryOptions.table = response.text;
+      console.log(queryOptions);
+      askFilterType(response,convo);
+      convo.next();
     });
+  });
 }
 
 function showColumns(table){
-    return new Promise(function (resolve, reject){
-        console.log('showcolumns. making request');
-        var query = 'SHOW COLUMNS FROM ' + selectedTable + ';';
-        db.query(query).spread(function (rows) {
-            var columns = [];
+  return new Promise(function (resolve, reject){
+    console.log('showcolumns. making request');
+    var query = 'SHOW COLUMNS FROM ' + selectedTable + ';';
+    db.query(query).spread(function (rows) {
+      var columns = [];
             //error checking?
             for(var i = 0; i < rows.length; i++){
                 //format selections nicely
@@ -256,58 +256,58 @@ function showColumns(table){
                 //add to columns array
                 columns.push(field);
                 tableFields.push(field);
-            }
-            resolve(columns.toString());
-        });
-    });
+              }
+              resolve(columns.toString());
+            });
+  });
 };
 
 askFilterType = function(response, convo){
-    selectedTable = response.text;
-    showColumns(selectedTable).then(function(columns){
-        convo.ask("Ok. I've got your list of *" + queryOptions.table + "* right here. Would you like to filter down your answer at all? \n" + columns, function(response, convo){
+  selectedTable = response.text;
+  showColumns(selectedTable).then(function(columns){
+    convo.ask("Ok. I've got your list of *" + queryOptions.table + "* right here. Would you like to filter down your answer at all? \n" + columns, function(response, convo){
             //add field to filter object
             filter.field = response.text;
             askFilterDetails(response, convo);
             convo.next();
-        })
-    })
+          })
+  })
 }
 
 function showFilterDetails(field){
-    return new Promise(function (resolve, reject){
-        console.log('showcolumns. making request');
-        var query = "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'";
-        db.query(query).spread(function (row) {
-            var options = {
-              "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
-              "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-              "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-              "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
-              "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-              "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-              "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
-            };
-            var dataType = row[0]['DATA_TYPE'];
-            filter.dataType = dataType;
-            var dataTypeOptions = options[row[0]['DATA_TYPE']];
-            resolve(dataTypeOptions);
-        });
+  return new Promise(function (resolve, reject){
+    console.log('showcolumns. making request');
+    var query = "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + queryOptions.table + "' AND COLUMN_NAME = '" + filter.field + "'";
+    db.query(query).spread(function (row) {
+      var options = {
+        "varchar" : "`Is`, `Is Not`, `Is Empty`, `Not Empty`, `None`",
+        "float" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+        "tinyint" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+        "int" : "`Equal`, `Not Equal`, `Greater Than`, `Less Than`, `Is Empty`, `Not Empty`, `None`",
+        "timestamp" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+        "date" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+        "datetime" : "`Today`, `Yesterday`, `Past 7 Days`, `Past 30 Days`, `Last Week`, `Last Month`, `Last Year`, `This Week`, `This Month`, `This Year`, `None`",
+      };
+      var dataType = row[0]['DATA_TYPE'];
+      filter.dataType = dataType;
+      var dataTypeOptions = options[row[0]['DATA_TYPE']];
+      resolve(dataTypeOptions);
     });
+});
 }
 
 askFilterDetails = function(response, convo){
-    field = response.text;
-    showFilterDetails(field).then(function(dataTypeOptions){
-        convo.ask("What would you like to filter by? \n" + dataTypeOptions, function(response, convo){
+  field = response.text;
+  showFilterDetails(field).then(function(dataTypeOptions){
+    convo.ask("What would you like to filter by? \n" + dataTypeOptions, function(response, convo){
             //add filter details to filter object
             filter.filter = response.text;
             //add filter to queryOptions object
             queryOptions.filter = filter;
             askViewBy(response, convo);
             convo.next();
-        });
-    })
+          });
+  })
 }
 
 
@@ -320,158 +320,166 @@ askViewBy = function(response, convo){
       view.type = "raw data";
       queryOptions.view = view; //May need to add field type? not sure
 
-      var filePath = null;
-      console.log(queryOptions);
       var today = new Date();
       var dd = today.getDate();
-            var mm = today.getMonth()+1; //January is 0!
-            var yyyy = today.getFullYear();
+      var mm = today.getMonth()+1; //January is 0!
+      var yyyy = today.getFullYear();
 
-            var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
-            
-            var query = buildQuery();
-            console.log(query.toString());
-            db.query(query).spread(function(results){
-             var keys = Object.keys(results[0])
-             var writer = csvWriter({ headers: keys})
-             writer.pipe(fs.createWriteStream(filename));
-             for(i=0; i<results.length; i++){
-              var vals = [];
-              for(j=0; j<keys.length; j++){
-                vals.push(results[i][keys[j]]);
-              }
-              writer.write(vals);
-            }
-            writer.end()
-          });
+      var filename = queryOptions.table + "_" + queryOptions.filter.filter + "_" + mm + "_" + dd + "_" + yyyy;        
 
-            function uploadFile(){
-              var p1 = new Promise(
-                function(resolve, reject){
-                  var options = {mode: "text", args: [filename, token] };
-                  PythonShell.run('upload.py', options, function (err, results) { 
-                    if(err){
-                      reject(err);
-                      console.log(err);
-                    }
-                    else{
-                      console.log(results);
-                      resolve(results[0]);
-                    }
-                  });
-                });
-              p1.then(
-                function(val){
-                convo.say({
-                  "text": ">>> Data Results: \n " + val.toString()
-                }
-                );
-              }
-              )
-            }
-            uploadFile();
-            convo.next();
+      var query = buildQuery();
+
+      function doTheQuery(query){
+        return new Promise(
+          function(resolve, reject){
+        db.query(query).spread(function(results){
+         var keys = Object.keys(results[0])
+         var writer = csvWriter({ headers: keys})
+         writer.pipe(fs.createWriteStream(filename));
+         for(i=0; i<results.length; i++){
+          var vals = [];
+          for(j=0; j<keys.length; j++){
+            vals.push(results[i][keys[j]]);
           }
-
-},
-      {
-        pattern: 'average',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the average of?');
-          var viewType = response.text;
-          view.type = viewType;
-            convo.ask(tableFields.toString(), function(response, convo){
-                view.field = response.text;
-                queryOptions.view = view;
-                query = buildQuery();
-                db.query(query).spread(function(results){
-                    var key = 'avg(`' + view.field + '`)';
-                    var average = results[0][key];
-                    convo.say("Average: " + average);
-                });
-                convo.next();
-            });
-            convo.next();
+          writer.write(vals);
         }
-      },
-      {
-        pattern: 'count',
-        callback: function(response, convo) {
-          var viewType = response.text;
-          view.type = viewType;
-          view.field = null;
-          queryOptions.view = view;
-          var query = buildQuery();
-          db.query(query).spread(function(results){
-              var key = 'count(*)';
-              var count = results[0][key];
-              convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
-          });
-        convo.next();
-        }
-      },
-      {
-        pattern: 'sum',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the sum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            db.query(query).spread(function(results){
-                var key = 'sum(`' + view.field + '`)';
-                var sum = results[0][key];
-                convo.say("The sum of " + view.field + "'s is " + sum);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      },
-        {
-        pattern: 'max',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the Maximum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'max(`' + view.field + '`)';
-              var max = results[0][key];
-              convo.say("Maximum: " + max);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
-      },
-            {
-        pattern: 'min',
-        callback: function(response,convo) {
-          convo.say('What field do you want to get the Minimum of?');
-          var viewType = response.text;
-          view.type = viewType;
-          convo.ask(tableFields.toString(), function(response, convo){
-            view.field = response.text;
-            queryOptions.view = view;
-            query = buildQuery();
-            connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
-              var key = 'min(`' + view.field + '`)';
-              var min = results[0][key];
-              convo.say("Minimum: " + min);
-            });
-            convo.next();
-          });
-          convo.next();
-        }
+        writer.end()
+      });
+                  });   
       }
+
+      function uploadFile(){
+        return new Promise(
+          function(resolve, reject){
+            var options = {mode: "text", args: [filename, token] };
+            PythonShell.run('upload.py', options, function (err, results) { 
+              if(err){
+                reject(err);
+                console.log(err);
+              }
+              else{
+                var fileUploaded = results[0];
+                resolve(fileUploaded);
+              }
+            });
+          });   
+      }
+
+      makeCall = function (response, convo){
+        doTheQuery(query)
+        .then(uploadFile()
+          .then(function (fileUploaded){
+            convo.next();
+            convo.say({
+                  "text": ">>> Data Results: \n " + fileUploaded.toString()
+                });
+          }));
+      }
+
+      makeCall(response, convo);
+  
+
+
+      }
+    },
+    {
+      pattern: 'average',
+      callback: function(response,convo) {
+        convo.say('What field do you want to get the average of?');
+        var viewType = response.text;
+        view.type = viewType;
+        convo.ask(tableFields.toString(), function(response, convo){
+          view.field = response.text;
+          queryOptions.view = view;
+          query = buildQuery();
+          db.query(query).spread(function(results){
+            var key = 'avg(`' + view.field + '`)';
+            var average = results[0][key];
+            convo.say("Average: " + average);
+          });
+          convo.next();
+        });
+        convo.next();
+      }
+    },
+    {
+      pattern: 'count',
+      callback: function(response, convo) {
+        var viewType = response.text;
+        view.type = viewType;
+        view.field = null;
+        queryOptions.view = view;
+        var query = buildQuery();
+        db.query(query).spread(function(results){
+          var key = 'count(*)';
+          var count = results[0][key];
+          convo.say("There have been *" + count + " " + queryOptions.table + "* " + queryOptions.filter.filter.toLowerCase());
+        });
+        convo.next();
+      }
+    },
+    {
+      pattern: 'sum',
+      callback: function(response,convo) {
+        convo.say('What field do you want to get the sum of?');
+        var viewType = response.text;
+        view.type = viewType;
+        convo.ask(tableFields.toString(), function(response, convo){
+          view.field = response.text;
+          queryOptions.view = view;
+          query = buildQuery();
+          db.query(query).spread(function(results){
+            var key = 'sum(`' + view.field + '`)';
+            var sum = results[0][key];
+            convo.say("The sum of " + view.field + "'s is " + sum);
+          });
+          convo.next();
+        });
+        convo.next();
+      }
+    },
+    {
+      pattern: 'max',
+      callback: function(response,convo) {
+        convo.say('What field do you want to get the Maximum of?');
+        var viewType = response.text;
+        view.type = viewType;
+        convo.ask(tableFields.toString(), function(response, convo){
+          view.field = response.text;
+          queryOptions.view = view;
+          query = buildQuery();
+          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+            var key = 'max(`' + view.field + '`)';
+            var max = results[0][key];
+            convo.say("Maximum: " + max);
+          });
+          convo.next();
+        });
+        convo.next();
+      }
+    },
+    {
+      pattern: 'min',
+      callback: function(response,convo) {
+        convo.say('What field do you want to get the Minimum of?');
+        var viewType = response.text;
+        view.type = viewType;
+        convo.ask(tableFields.toString(), function(response, convo){
+          view.field = response.text;
+          queryOptions.view = view;
+          query = buildQuery();
+          connection.query({ sql : query, timeout : 10000 }, function(error, results, fields){
+            var key = 'min(`' + view.field + '`)';
+            var min = results[0][key];
+            convo.say("Minimum: " + min);
+          });
+          convo.next();
+        });
+        convo.next();
+      }
+    }
     ]);
-  }
+}
 
 
 
@@ -567,7 +575,7 @@ function buildQuery(){
   }
   else if (filter == "last week"){
     if (filterDataType == "timestamp"){
-        whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 WEEK) AND WEEK(" + field + ") = WEEK(CURRENT_DATE - INTERVAL 1 WEEK)"
+      whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 WEEK) AND WEEK(" + field + ") = WEEK(CURRENT_DATE - INTERVAL 1 WEEK)"
     }
     else if (filterDataType == "date"){
       //do something
@@ -589,18 +597,18 @@ function buildQuery(){
     }
   }
   else if (filter == "last year"){
-      if (filterDataType == "timestamp"){
-        whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 YEAR)"
-        console.log(whereStatement);
-      }
-      else if (filterDataType == "date"){
+    if (filterDataType == "timestamp"){
+      whereStatement =  "YEAR(" + field + ") = YEAR(CURRENT_DATE - INTERVAL 1 YEAR)"
+      console.log(whereStatement);
+    }
+    else if (filterDataType == "date"){
         //do something
       }
       else if (filterDataType == "datetime"){
         //do something
       }
-  }
-  else if (filter == "this week"){
+    }
+    else if (filter == "this week"){
       if (filterDataType == "timestamp"){
         whereStatement =  "WEEKOFYEAR(" + field + ") = WEEKOFYEAR(NOW())";
         console.log(whereStatement);
@@ -611,8 +619,8 @@ function buildQuery(){
       else if (filterDataType == "datetime"){
         //do something
       }
-  }
-  else if (filter == "this month"){
+    }
+    else if (filter == "this month"){
       if (filterDataType == "timestamp"){
         whereStatement =  field + " >= DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE())-1 DAY)"
         console.log(whereStatement);
@@ -623,8 +631,8 @@ function buildQuery(){
       else if (filterDataType == "datetime"){
         //do something
       }
-  }
-  else if (filter == "this year"){
+    }
+    else if (filter == "this year"){
       if (filterDataType == "timestamp"){
         whereStatement =  "YEAR(" + field + ") = YEAR(CURDATE())";
         console.log(whereStatement);
@@ -635,7 +643,7 @@ function buildQuery(){
       else if (filterDataType == "datetime"){
         //do something
       }
-  }
+    }
 
 
   ///VIEW TYPE///
@@ -644,26 +652,26 @@ function buildQuery(){
 
     console.log(whereStatement);
     //will automatically handle null where statments :)
-    var query = knex(table).whereRaw(whereStatement).count();
-  }
-  else if(viewType == "raw data"){
-    var query = knex(table).whereRaw(whereStatement);
-  }
-  else if (viewType == "average"){
-    var query = knex(table).avg(view.field);
-  }
-  else if(viewType == "sum"){
-    var query = knex(table).sum(view.field);
-  }
-  else if(viewType == "min"){
-    var query = knex(table).min(view.field);
-  }
-  else if(viewType == "max"){
-    var query = knex(table).max(view.field);
-  }
+var query = knex(table).whereRaw(whereStatement).count();
+}
+else if(viewType == "raw data"){
+  var query = knex(table).whereRaw(whereStatement);
+}
+else if (viewType == "average"){
+  var query = knex(table).avg(view.field);
+}
+else if(viewType == "sum"){
+  var query = knex(table).sum(view.field);
+}
+else if(viewType == "min"){
+  var query = knex(table).min(view.field);
+}
+else if(viewType == "max"){
+  var query = knex(table).max(view.field);
+}
 
-  console.log('the buildquery query is: ' + query.toString());
-  return query.toString();
+console.log('the buildquery query is: ' + query.toString());
+return query.toString();
 
   // if (filter == "today"){
   //   var query = "SELECT * FROM " + choices[0] + " WHERE " + columnTitle + " >= CURDATE()";
